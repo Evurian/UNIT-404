@@ -29,3 +29,5 @@ Los eventos son estáticos y sobreviven al cambio de escena: todo suscriptor deb
 
 ## 7. Añadidos del Integrante 1 (no están en el GDD)
 - Invulnerabilidad de 0.5 s tras un golpe (evita varias vidas perdidas por frames seguidos).
+- A/D (y W/S en 3D) no actúan mientras el robot toca el suelo: es un propulsor y solo se controla en el aire. Espacio sí funciona en el suelo.
+- 2.5D: A/D fijan un ángulo de inclinación objetivo (máx. 35°) y al soltarlas el robot vuelve a la vertical, para que el impulso no lance de lado.
