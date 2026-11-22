@@ -21,7 +21,9 @@ public class CameraFollow : MonoBehaviour
         }
         else
         {
-            Vector3 desired = target.position + target.rotation * offset3D;
+            // Solo el giro en Y (guinada): la camara no se voltea cuando el robot se inclina.
+            Quaternion yaw = Quaternion.Euler(0f, target.eulerAngles.y, 0f);
+            Vector3 desired = target.position + yaw * offset3D;
             transform.position = Vector3.SmoothDamp(transform.position, desired, ref velocity, smoothTime);
             transform.LookAt(target);
         }
