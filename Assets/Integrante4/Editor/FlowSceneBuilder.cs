@@ -17,6 +17,10 @@ public static class FlowSceneBuilder
     {
         BuildStart();
         BuildLoading();
+        BuildStory("Introduccion", StoryScene.Script.Intro, SceneLoader.FirstLevel);
+        BuildStory("Despedida", StoryScene.Script.Epilogue, "Creditos");
+        BuildStory("Creditos", StoryScene.Script.Credits, "Cierre");
+        BuildStory("Cierre", StoryScene.Script.Farewell, SceneLoader.StartScene);
         AssetDatabase.SaveAssets();
     }
 
@@ -30,7 +34,8 @@ public static class FlowSceneBuilder
         Label(canvas.transform, "Titulo", "UNIT-404", 120, new Vector2(0f, 200f), new Vector2(1200f, 180f), Parchment);
         Label(canvas.transform, "Subtitulo", "El robot que cruzo las eras", 40, new Vector2(0f, 90f), new Vector2(1200f, 60f), Parchment);
         Button(canvas.transform, "BotonJugar", "Jugar", new Vector2(0f, -60f), menu.Play);
-        Button(canvas.transform, "BotonSalir", "Salir", new Vector2(0f, -190f), menu.Quit);
+        Button(canvas.transform, "BotonCreditos", "Creditos", new Vector2(0f, -190f), menu.ShowCredits);
+        Button(canvas.transform, "BotonSalir", "Salir", new Vector2(0f, -320f), menu.Quit);
         EditorSceneManager.SaveScene(scene, Folder + "Inicio.unity");
     }
 
@@ -50,6 +55,44 @@ public static class FlowSceneBuilder
         loading.barFill = fill;
         loading.percentText = Label(canvas.transform, "Porcentaje", "0%", 40, new Vector2(0f, -110f), new Vector2(400f, 60f), Parchment);
         EditorSceneManager.SaveScene(scene, Folder + "Carga.unity");
+    }
+
+    static void BuildStory(string name, StoryScene.Script script, string next)
+    {
+        var scene = NewScene();
+        Canvas canvas = NewCanvas("Canvas");
+        Fill(canvas.transform, "Fondo", new Color(0.06f, 0.05f, 0.07f));
+        var story = new GameObject("StoryScene").AddComponent<StoryScene>();
+        story.script = script;
+        story.nextScene = next;
+        story.text = Label(canvas.transform, "Texto", "", 52, Vector2.zero, new Vector2(1500f, 400f), Parchment);
+        Label(canvas.transform, "Ayuda", "Espacio para saltar", 28, new Vector2(0f, -460f), new Vector2(600f, 50f), new Color(1f, 1f, 1f, 0.4f));
+        EditorSceneManager.SaveScene(scene, Folder + name + ".unity");
+    }
+
+    // Adds Ada's narrator, the summary card and the achievement toast to a level scene.
+    public static void AddNarrator(int level, string nextScene)
+    {
+        Canvas canvas = NewCanvas("NarradorCanvas", 15);
+        var narrator = new GameObject("LevelNarrator").AddComponent<LevelNarrator>();
+        narrator.level = level;
+        narrator.nextScene = nextScene;
+
+        RectTransform card = Rect("TarjetaResumen", canvas.transform, Vector2.zero, new Vector2(800f, 560f));
+        card.gameObject.AddComponent<Image>().color = new Color(Parchment.r, Parchment.g, Parchment.b, 0.95f);
+        Label(card, "Titulo", "Resumen del nivel", 52, new Vector2(0f, 220f), new Vector2(700f, 80f), Ink);
+        narrator.summaryText = Label(card, "Detalle", "", 38, new Vector2(0f, 20f), new Vector2(700f, 300f), Ink);
+        Button(card, "BotonContinuar", "Continuar", new Vector2(0f, -210f), narrator.Continue);
+        narrator.summaryCard = card.gameObject;
+
+        var toast = new GameObject("AchievementToast").AddComponent<AchievementToast>();
+        RectTransform badge = Rect("Sello", canvas.transform, new Vector2(-30f, -30f), new Vector2(420f, 90f));
+        badge.anchorMin = badge.anchorMax = badge.pivot = new Vector2(1f, 1f);
+        badge.anchoredPosition = new Vector2(-30f, -30f);
+        badge.gameObject.AddComponent<Image>().color = new Color(0.95f, 0.78f, 0.25f);
+        toast.label = Label(badge, "Texto", "", 34, Vector2.zero, badge.sizeDelta, Ink);
+        toast.badge = badge;
+        narrator.toast = toast;
     }
 
     // Called by LevelSceneBuilder before saving each level scene.

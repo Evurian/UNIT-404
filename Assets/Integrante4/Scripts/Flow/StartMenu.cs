@@ -2,7 +2,8 @@ using UnityEngine;
 
 public class StartMenu : MonoBehaviour
 {
-    public void Play() => SceneLoader.Go(SceneLoader.FirstLevel);
+    public void Play() => SceneLoader.Go("Introduccion");
+    public void ShowCredits() => SceneLoader.Go("Creditos");
 
     public void Quit()
     {

@@ -126,6 +126,27 @@ namespace Unit404.Integrante4.Tests
             Assert.IsNotNull(Object.FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>(), "EventSystem missing");
         }
 
+        [TestCase("Introduccion")]
+        [TestCase("Despedida")]
+        [TestCase("Creditos")]
+        [TestCase("Cierre")]
+        public void StoryScenes_HaveSkippableStoryScene(string sceneName)
+        {
+            Open(sceneName);
+            Assert.AreEqual(1, CountComponents("StoryScene"));
+        }
+
+        [TestCase("Nivel1_Mesopotamia")]
+        [TestCase("Nivel2_Egipto")]
+        [TestCase("Nivel3_Grecia")]
+        [TestCase("Nivel4_China")]
+        public void Levels_HaveNarratorWithLevelNumber(string sceneName)
+        {
+            Open(sceneName);
+            Assert.AreEqual(1, CountComponents("LevelNarrator"));
+            Assert.AreEqual(1, CountComponents("AchievementToast"));
+        }
+
         static int CountComponents(string typeName)
         {
             return Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).Count(m => m != null && m.GetType().Name == typeName);
