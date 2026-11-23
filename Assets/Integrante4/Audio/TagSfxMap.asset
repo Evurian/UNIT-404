@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c5ad16c796973b22874120d0091e9b6, type: 3}
+  m_Name: TagSfxMap
+  m_EditorClassIdentifier: Assembly-CSharp::TagSfxMap
+  entries:
+  - tag: Fragmento
+    clip: {fileID: 8300000, guid: 794e2388c3f0d0fdd86294aa937397ee, type: 3}
+  - tag: Propulsor
+    clip: {fileID: 8300000, guid: 60a3a3dbf3a693c939b9fe90d0814b4e, type: 3}
+  - tag: Obstaculo
+    clip: {fileID: 8300000, guid: f913c053f63a0e391a87ceb28a53b663, type: 3}
+  - tag: Contaminacion
+    clip: {fileID: 8300000, guid: e01b50f219fed41d98d125189324783d, type: 3}
+  - tag: Observador
+    clip: {fileID: 8300000, guid: 6841801d158578f6dbabc2e7b89a3579, type: 3}
+  - tag: Enemigo
+    clip: {fileID: 8300000, guid: 2e729ea49bc9bec22bb40f82d8be24e0, type: 3}
+  - tag: Jefe
+    clip: {fileID: 8300000, guid: 09b079d0fc059ed7b9b2ce7d8acabeec, type: 3}
+  - tag: Chip
+    clip: {fileID: 8300000, guid: 3c33e660f86ae735f850e984622eb824, type: 3}
+  - tag: Glifo
+    clip: {fileID: 8300000, guid: 33a7fb260d652d4fb9517bcb051be13d, type: 3}
+  - tag: Checkpoint
+    clip: {fileID: 8300000, guid: e65f59b7bfdbdcc4a81fdcaf7dc80d96, type: 3}
+  - tag: Plataforma
+    clip: {fileID: 8300000, guid: d306071f0c5e3b6459ad925a631fec28, type: 3}
