@@ -52,6 +52,46 @@ namespace Unit404.Integrante4.Tests
             Assert.AreEqual(1, GameObject.FindGameObjectsWithTag("Jefe").Length);
         }
 
+        [TestCase("Nivel3_Grecia", "Inscripcion")]
+        [TestCase("Nivel4_China", "TiraBambu")]
+        public void Level3And4_HaveContractObjectsGlyphsCheckpointsPortalAndBoss(string sceneName, string glyphPrefix)
+        {
+            Open(sceneName);
+            Assert.IsNotNull(GameObject.Find("PlayerStart"), "PlayerStart missing");
+            Assert.IsNotNull(Camera.main, "Main Camera missing");
+            var glyphs = GameObject.FindGameObjectsWithTag("Glifo");
+            Assert.AreEqual(8, glyphs.Length);
+            Assert.IsTrue(glyphs.All(g => g.name.StartsWith(glyphPrefix)));
+            Assert.AreEqual(2, GameObject.FindGameObjectsWithTag("Checkpoint").Length);
+            Assert.AreEqual(1, GameObject.FindGameObjectsWithTag("Plataforma").Count(g => g.name == "PortalLlegada"));
+            Assert.AreEqual(1, GameObject.FindGameObjectsWithTag("Jefe").Length);
+        }
+
+        [TestCase("Nivel3_Grecia")]
+        [TestCase("Nivel4_China")]
+        public void Level3And4_HaveMovingObstaclesAndGuardsAndAllowDepth(string sceneName)
+        {
+            Open(sceneName);
+            Assert.GreaterOrEqual(CountComponents("MovingObstacle"), 3, "moving obstacles");
+            Assert.GreaterOrEqual(GameObject.FindGameObjectsWithTag("Observador").Length, 2);
+            Assert.GreaterOrEqual(GameObject.FindGameObjectsWithTag("Fragmento").Length, 10);
+            var placeholder = Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).First(m => m.GetType().Name == "PlaceholderPlayer");
+            Assert.IsTrue((bool)placeholder.GetType().GetField("allowDepth").GetValue(placeholder), "3D flight must allow depth");
+        }
+
+        [TestCase("Nivel1_Mesopotamia")]
+        [TestCase("Nivel2_Egipto")]
+        public void Level1And2_HaveNoMovingObstacles(string sceneName)
+        {
+            Open(sceneName);
+            Assert.AreEqual(0, CountComponents("MovingObstacle"));
+        }
+
+        static int CountComponents(string typeName)
+        {
+            return Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).Count(m => m != null && m.GetType().Name == typeName);
+        }
+
         static Scene Open(string sceneName)
         {
             return EditorSceneManager.OpenScene(Folder + sceneName + ".unity", OpenSceneMode.Single);

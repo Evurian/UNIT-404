@@ -18,6 +18,8 @@ public static class LevelSceneBuilder
     {
         BuildLevel1();
         BuildLevel2();
+        BuildLevel3();
+        BuildLevel4();
         AssetDatabase.SaveAssets();
     }
 
@@ -108,6 +110,88 @@ public static class LevelSceneBuilder
         Finish(scene, new Vector3(2f, 2f, 0f), "Nivel2_Egipto");
     }
 
+    // ---------------- Level 3: Grecia (3D flight from here on) ----------------
+    public static void BuildLevel3()
+    {
+        Scene scene = NewLevel("Nivel3_Grecia", new Color(0.55f, 0.72f, 0.85f));
+        Transform root = new GameObject("Nivel").transform;
+
+        // 1. Puerto (x 0-40): flight tutorial over ships, free depth
+        Floor(root, "Muelle", 0f, 12f, 0f);
+        for (int i = 0; i < 4; i++) Solid(root, "Barco_" + (i + 1), 16f + i * 6f, 0.5f, 4f, 1f, Wall, (i % 2 == 0 ? -3f : 3f));
+        Pickups(root, "Fragmento", 14f, 38f, 5, 3f);
+        Ring(root, 22f, 4f); Ring(root, 30f, 5f); Ring(root, 38f, 6f);
+
+        // 2. Agora (x 40-80): first checkpoint, first hoplites
+        Floor(root, "Suelo_Agora", 40f, 80f, 0f);
+        Guard(root, "Hoplita_1", 52f, 1.5f); Guard(root, "Hoplita_2", 66f, 1.5f);
+        Solid(root, "Columna_Agora", 58f, 3f, 1.5f, 6f, Wall);
+        Pickups(root, "Fragmento", 42f, 78f, 4, 5f);
+        Tagged(root, "Checkpoint_1", "Checkpoint", PrimitiveType.Cube, new Vector3(78f, 2f, 0f), new Vector3(1f, 4f, 1f), true);
+
+        // 3. Ladera (x 80-120): rolling rocks and falling columns
+        Rampa(root, "Ladera", 100f, 0f, 40f, 8f);
+        for (int i = 0; i < 3; i++) Mover(root, "Roca_" + (i + 1), "Obstaculo", PrimitiveType.Sphere, new Vector3(90f + i * 10f, 2f + i * 1.5f, 0f), Vector3.one * 2f, Vector3.right * 6f, 3f);
+        for (int i = 0; i < 2; i++) Mover(root, "ColumnaCaida_" + (i + 1), "Obstaculo", PrimitiveType.Cylinder, new Vector3(96f + i * 14f, 8f, 0f), new Vector3(1f, 3f, 1f), Vector3.down * 5f, 2f);
+        Wind(root, "BrisaMar", 100f, 6f);
+        Pickups(root, "Fragmento", 84f, 118f, 3, 6f);
+
+        // 4. Templo en ruinas (x 120-160): second checkpoint and Cronos arena
+        Solid(root, "Ruinas", 140f, 9f, 40f, 2f);
+        Tagged(root, "Checkpoint_2", "Checkpoint", PrimitiveType.Cube, new Vector3(124f, 11f, 0f), new Vector3(1f, 4f, 1f), true);
+        Tagged(root, "Cronos", "Jefe", PrimitiveType.Capsule, new Vector3(150f, 12.5f, 0f), new Vector3(3f, 3f, 3f), false);
+
+        // 5. Altar (x 160-190): arrival portal
+        Solid(root, "Altar", 175f, 9f, 30f, 2f);
+        Tagged(root, "PortalLlegada", "Plataforma", PrimitiveType.Cube, new Vector3(185f, 12f, 0f), new Vector3(2f, 4f, 1f), true);
+
+        Glyphs(root, new[] { 10f, 26f, 46f, 70f, 94f, 112f, 136f, 168f }, new[] { 3f, 5f, 2f, 7f, 8f, 9f, 11.5f, 11.5f }, "Inscripcion");
+        Depth(root, new Color(0.5f, 0.55f, 0.4f), "ColinasTaladas", 190f);
+        Finish(scene, new Vector3(2f, 2f, 0f), "Nivel3_Grecia", true);
+    }
+
+    // ---------------- Level 4: China (3D flight) ----------------
+    public static void BuildLevel4()
+    {
+        Scene scene = NewLevel("Nivel4_China", new Color(0.82f, 0.74f, 0.5f));
+        Transform root = new GameObject("Nivel").transform;
+
+        // 1. Paso de montaña (x 0-40): flight between hillsides to the wall
+        Solid(root, "Ladera_Izq", 20f, 6f, 40f, 12f, Ground, -9f);
+        Solid(root, "Ladera_Der", 20f, 6f, 40f, 12f, Ground, 9f);
+        Floor(root, "Suelo_Paso", 0f, 40f, 0f);
+        Pickups(root, "Fragmento", 4f, 38f, 5, 4f);
+        Ring(root, 14f, 5f); Ring(root, 26f, 7f); Ring(root, 38f, 8f);
+
+        // 2. Primera torre (x 40-80): first checkpoint, crossbow soldiers on towers
+        Floor(root, "Suelo_Torre", 40f, 80f, 0f);
+        Solid(root, "Torre_1", 50f, 4f, 4f, 8f, Wall);
+        Solid(root, "Torre_2", 70f, 4f, 4f, 8f, Wall);
+        Guard(root, "Ballestero_1", 50f, 9f); Guard(root, "Ballestero_2", 70f, 9f);
+        Pickups(root, "Fragmento", 42f, 78f, 4, 5f);
+        Tagged(root, "Checkpoint_1", "Checkpoint", PrimitiveType.Cube, new Vector3(78f, 2f, 0f), new Vector3(1f, 4f, 1f), true);
+
+        // 3. Adarve de la muralla (x 80-120): carts and dust storm
+        Solid(root, "Adarve", 100f, 5f, 40f, 2f);
+        for (int i = 0; i < 3; i++) Mover(root, "Carreta_" + (i + 1), "Obstaculo", PrimitiveType.Cube, new Vector3(88f + i * 12f, 7f, 0f), new Vector3(2f, 1.5f, 2f), Vector3.right * 5f, 2.5f);
+        Tagged(root, "TormentaPolvo", "Contaminacion", PrimitiveType.Cube, new Vector3(108f, 8f, 0f), new Vector3(8f, 6f, 6f), true, new Color(0.8f, 0.7f, 0.3f));
+        Pickups(root, "Fragmento", 84f, 118f, 3, 8f);
+
+        // 4. Tramo ancho entre torres (x 120-160): second checkpoint and Chiyou arena
+        Solid(root, "Tramo_Ancho", 140f, 5f, 40f, 2f);
+        Tagged(root, "Checkpoint_2", "Checkpoint", PrimitiveType.Cube, new Vector3(124f, 8f, 0f), new Vector3(1f, 4f, 1f), true);
+        Tagged(root, "Chiyou", "Jefe", PrimitiveType.Capsule, new Vector3(150f, 8.5f, 0f), new Vector3(3f, 3f, 3f), false);
+        Solid(root, "Mastil_1", 130f, 9f, 0.5f, 8f, Wall);
+
+        // 5. Torre del estandarte (x 160-190): arrival portal
+        Solid(root, "Torre_Estandarte", 180f, 6f, 8f, 12f, Wall);
+        Tagged(root, "PortalLlegada", "Plataforma", PrimitiveType.Cube, new Vector3(180f, 13f, 0f), new Vector3(2f, 4f, 1f), true);
+
+        Glyphs(root, new[] { 10f, 30f, 48f, 72f, 96f, 114f, 138f, 166f }, new[] { 4f, 6f, 5f, 6f, 9f, 9f, 8f, 7f }, "TiraBambu");
+        Depth(root, new Color(0.45f, 0.5f, 0.45f), "Montañas", 190f);
+        Finish(scene, new Vector3(2f, 2f, 0f), "Nivel4_China", true);
+    }
+
     // ---------------- helpers ----------------
     static Scene NewLevel(string name, Color sky)
     {
@@ -121,17 +205,19 @@ public static class LevelSceneBuilder
         return scene;
     }
 
-    static void Finish(Scene scene, Vector3 start, string name)
+    static void Finish(Scene scene, Vector3 start, string name, bool freeDepth = false)
     {
         new GameObject("PlayerStart").transform.position = start;
 
         var player = GameObject.CreatePrimitive(PrimitiveType.Cube);
         player.name = "JugadorTemporal";
         player.tag = "Player";
-        player.layer = LayerMask.NameToLayer("Player");
+        player.layer = Layer("Player");
         player.transform.position = start;
         player.AddComponent<Rigidbody>();
-        player.AddComponent<PlaceholderPlayer>();
+        var placeholder = player.AddComponent<PlaceholderPlayer>();
+        placeholder.allowDepth = freeDepth;
+        if (freeDepth) Camera.main.GetComponent<SideCameraFollow>().followDepth = true;
         player.GetComponent<Renderer>().sharedMaterial = Mat(new Color(0.2f, 0.7f, 0.9f));
 
         var hud = AssetDatabase.LoadAssetAtPath<GameObject>(HudPath);
@@ -139,6 +225,24 @@ public static class LevelSceneBuilder
         new GameObject("HudEventSimulator (solo pruebas)").AddComponent<HudEventSimulator>();
 
         EditorSceneManager.SaveScene(scene, Folder + name + ".unity");
+    }
+
+    // Safe fallbacks: a missing layer maps to Default, a missing tag is skipped with a warning.
+    static int Layer(string name)
+    {
+        int index = LayerMask.NameToLayer(name);
+        if (index < 0) { Debug.LogWarning("Layer '" + name + "' not found, using Default"); return 0; }
+        return index;
+    }
+
+    static void SetTag(GameObject go, string tag)
+    {
+        if (System.Array.IndexOf(UnityEditorInternal.InternalEditorUtility.tags, tag) < 0)
+        {
+            Debug.LogWarning("Tag '" + tag + "' not found, '" + go.name + "' left untagged");
+            return;
+        }
+        go.tag = tag;
     }
 
     static Material Mat(Color c)
@@ -155,13 +259,21 @@ public static class LevelSceneBuilder
         go.transform.SetParent(parent, false);
         go.transform.position = pos;
         go.transform.localScale = scale;
-        go.layer = LayerMask.NameToLayer(layer);
+        go.layer = Layer(layer);
         go.GetComponent<Renderer>().sharedMaterial = Mat(color);
         return go;
     }
 
-    static void Solid(Transform p, string name, float x, float y, float w, float h, Color? color = null)
-        => Make(p, name, PrimitiveType.Cube, new Vector3(x, y, 0f), new Vector3(w, h, 2f), color ?? Ground, "Entorno");
+    static void Solid(Transform p, string name, float x, float y, float w, float h, Color? color = null, float z = 0f)
+        => Make(p, name, PrimitiveType.Cube, new Vector3(x, y, z), new Vector3(w, h, 2f), color ?? Ground, "Entorno");
+
+    static void Mover(Transform p, string name, string tag, PrimitiveType type, Vector3 pos, Vector3 scale, Vector3 travel, float speed)
+    {
+        var go = Tagged(p, name, tag, type, pos, scale, false, new Color(0.7f, 0.3f, 0.3f));
+        var mover = go.AddComponent<MovingObstacle>();
+        mover.travel = travel;
+        mover.speed = speed;
+    }
 
     static void Floor(Transform p, string name, float x0, float x1, float y)
         => Solid(p, name, (x0 + x1) / 2f, y - 0.5f, x1 - x0, 1f);
@@ -175,7 +287,7 @@ public static class LevelSceneBuilder
     static GameObject Tagged(Transform p, string name, string tag, PrimitiveType type, Vector3 pos, Vector3 scale, bool trigger, Color? color = null)
     {
         var go = Make(p, name, type, pos, scale, color ?? new Color(0.9f, 0.85f, 0.4f), "Entorno");
-        go.tag = tag;
+        SetTag(go, tag);
         go.GetComponent<Collider>().isTrigger = trigger;
         return go;
     }
@@ -186,7 +298,7 @@ public static class LevelSceneBuilder
         {
             float x = count == 1 ? x0 : Mathf.Lerp(x0, x1, i / (float)(count - 1));
             var go = Make(p, tag + "_" + x.ToString("0"), PrimitiveType.Sphere, new Vector3(x, y, 0f), Vector3.one * 0.6f, new Color(0.3f, 0.9f, 0.5f), "Coleccionable");
-            go.tag = tag;
+            SetTag(go, tag);
             go.GetComponent<Collider>().isTrigger = true;
         }
     }
@@ -195,12 +307,12 @@ public static class LevelSceneBuilder
     {
         var go = Make(p, "AnilloPropulsor_" + x.ToString("0"), PrimitiveType.Cylinder, new Vector3(x, y, 0f), new Vector3(2.5f, 0.15f, 2.5f), new Color(1f, 0.6f, 0.1f), "Coleccionable");
         go.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
-        go.tag = "Propulsor";
+        SetTag(go, "Propulsor");
         go.GetComponent<Collider>().isTrigger = true;
     }
 
     static void Guard(Transform p, string name, float x, float y)
-        => Tagged(p, name, "Observador", PrimitiveType.Capsule, new Vector3(x, y, 0f), new Vector3(1f, 1.5f, 1f), false, new Color(0.8f, 0.2f, 0.2f)).layer = LayerMask.NameToLayer("Enemigo");
+        => Tagged(p, name, "Observador", PrimitiveType.Capsule, new Vector3(x, y, 0f), new Vector3(1f, 1.5f, 1f), false, new Color(0.8f, 0.2f, 0.2f)).layer = Layer("Enemigo");
 
     static void Smoke(Transform p, string name, float x, float y)
         => Tagged(p, name, "Contaminacion", PrimitiveType.Sphere, new Vector3(x, y, 0f), new Vector3(3f, 3f, 1f), true, new Color(0.4f, 0.4f, 0.45f));
@@ -212,12 +324,12 @@ public static class LevelSceneBuilder
         go.GetComponent<Renderer>().enabled = false;
     }
 
-    static void Glyphs(Transform p, float[] xs, float[] ys)
+    static void Glyphs(Transform p, float[] xs, float[] ys, string label = "Glifo")
     {
         for (int i = 0; i < xs.Length; i++)
         {
-            var go = Make(p, "Glifo_" + (i + 1), PrimitiveType.Cube, new Vector3(xs[i], ys[i], 0f), new Vector3(0.7f, 1f, 0.2f), new Color(0.95f, 0.9f, 0.6f), "Coleccionable");
-            go.tag = "Glifo";
+            var go = Make(p, label + "_" + (i + 1), PrimitiveType.Cube, new Vector3(xs[i], ys[i], 0f), new Vector3(0.7f, 1f, 0.2f), new Color(0.95f, 0.9f, 0.6f), "Coleccionable");
+            SetTag(go, "Glifo");
             go.GetComponent<Collider>().isTrigger = true;
         }
     }
