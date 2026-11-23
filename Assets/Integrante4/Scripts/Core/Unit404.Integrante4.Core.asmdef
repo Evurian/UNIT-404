@@ -1,0 +1,14 @@
+{
+    "name": "Unit404.Integrante4.Core",
+    "rootNamespace": "Unit404.Integrante4.Core",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}
