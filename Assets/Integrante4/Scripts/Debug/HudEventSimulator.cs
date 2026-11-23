@@ -5,11 +5,23 @@ using UnityEngine;
 // H = golpe, F = gastar 1 de combustible, G = recargar 1, R = reiniciar.
 public class HudEventSimulator : MonoBehaviour
 {
+    // Full HUD extras: N = glifo, M = +20 anomalia, Q = marca de objetivo, 1/2/3 = chip en recarga.
+    HudExtrasView extras;
+    int glyphs;
+    float anomaly;
+    bool lockOn;
+    readonly float[] cooldown = new float[3];
+    const float CooldownTotal = 5f;
+
     int lives = 5;
     int score = 100;
     float fuel = 10f;
 
-    void Start() => Publish();
+    void Start()
+    {
+        extras = FindFirstObjectByType<HudExtrasView>();
+        Publish();
+    }
 
     void Update()
     {
@@ -22,7 +34,8 @@ public class HudEventSimulator : MonoBehaviour
         }
         if (Input.GetKeyDown(KeyCode.F)) { fuel = Mathf.Max(0f, fuel - 1f); Publish(); }
         if (Input.GetKeyDown(KeyCode.G)) { fuel = Mathf.Min(20f, fuel + 1f); Publish(); }
-        if (Input.GetKeyDown(KeyCode.R)) { lives = 5; score = 100; fuel = 10f; Publish(); }
+        if (Input.GetKeyDown(KeyCode.R)) { lives = 5; score = 100; fuel = 10f; glyphs = 0; anomaly = 0f; Publish(); }
+        UpdateExtras();
     }
 
     void Publish()
@@ -30,5 +43,20 @@ public class HudEventSimulator : MonoBehaviour
         GameEvents.RaiseLivesChanged(lives);
         GameEvents.RaiseScoreChanged(score);
         GameEvents.RaiseFuelChanged(fuel);
+    }
+
+    void UpdateExtras()
+    {
+        if (extras == null) return;
+        if (Input.GetKeyDown(KeyCode.N)) { glyphs = Mathf.Min(8, glyphs + 1); extras.ShowGlyphs(glyphs, 8); }
+        if (Input.GetKeyDown(KeyCode.M)) { anomaly = Mathf.Min(100f, anomaly + 20f); extras.SetAnomaly(anomaly); }
+        if (Input.GetKeyDown(KeyCode.Q)) { lockOn = !lockOn; extras.SetLockOn(lockOn); }
+        string[] names = { "Salto", "Escudo", "Pulso" };
+        for (int i = 0; i < 3; i++)
+        {
+            if (Input.GetKeyDown(KeyCode.Alpha1 + i)) cooldown[i] = CooldownTotal;
+            cooldown[i] = Mathf.Max(0f, cooldown[i] - Time.deltaTime);
+            extras.SetChip(i, names[i], i + 1, cooldown[i], CooldownTotal);
+        }
     }
 }
