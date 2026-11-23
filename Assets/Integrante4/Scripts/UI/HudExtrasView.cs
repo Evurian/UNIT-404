@@ -1,3 +1,4 @@
+using System.Collections;
 using Unit404.Integrante4.Core;
 using UnityEngine;
 using UnityEngine.UI;
@@ -40,6 +41,24 @@ public class HudExtrasView : MonoBehaviour
         ChipSlot s = chipSlots[slot];
         if (s.label != null) s.label.text = HudExtras.ChipLabel(chipName, fuelCost);
         if (s.cooldownOverlay != null) s.cooldownOverlay.fillAmount = HudExtras.CooldownFraction(cooldownRemaining, cooldownTotal);
+    }
+
+    // New chip animation: the slot label pulses once (week 14).
+    public void PlayChipObtained(int slot)
+    {
+        if (slot < 0 || slot >= chipSlots.Length || chipSlots[slot] == null || chipSlots[slot].label == null) return;
+        StartCoroutine(Pulse(chipSlots[slot].label.rectTransform));
+    }
+
+    IEnumerator Pulse(RectTransform target)
+    {
+        const float duration = 0.6f;
+        for (float t = 0f; t < duration; t += Time.unscaledDeltaTime)
+        {
+            target.localScale = Vector3.one * UiAnimation.ChipPulse(t, duration, 1.4f);
+            yield return null;
+        }
+        target.localScale = Vector3.one;
     }
 
     public void SetAnomaly(float percent)

@@ -93,6 +93,15 @@ public static class FlowSceneBuilder
         toast.label = Label(badge, "Texto", "", 34, Vector2.zero, badge.sizeDelta, Ink);
         toast.badge = badge;
         narrator.toast = toast;
+
+        // Culture transition overlay: last child of the canvas so it covers the summary card.
+        RectTransform fade = Rect("TransicionCultura", canvas.transform, Vector2.zero, Vector2.zero);
+        fade.anchorMin = Vector2.zero; fade.anchorMax = Vector2.one; fade.offsetMin = fade.offsetMax = Vector2.zero;
+        var fadeImage = fade.gameObject.AddComponent<Image>();
+        fadeImage.color = new Color(0f, 0f, 0f, 0f);
+        var transition = new GameObject("CultureTransition").AddComponent<CultureTransition>();
+        transition.overlay = fadeImage;
+        narrator.transition = transition;
     }
 
     // Called by LevelSceneBuilder before saving each level scene.

@@ -11,6 +11,13 @@ namespace Unit404.Integrante4.Core
         public static string BaseHex(int level) => Bases[Check(level)];
         public static string AccentHex(int level) => Accents[Check(level)];
 
+        // Colour of the full-screen fade after finishing `level`: accent of the next culture, parchment ink after the last.
+        public static string TransitionHex(int level)
+        {
+            Check(level);
+            return level < 4 ? Accents[level] : "#291C12";
+        }
+
         static int Check(int level)
         {
             if (level < 1 || level > 4) throw new ArgumentOutOfRangeException(nameof(level), "level must be 1-4");

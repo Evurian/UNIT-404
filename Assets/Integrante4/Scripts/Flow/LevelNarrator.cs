@@ -14,6 +14,7 @@ public class LevelNarrator : MonoBehaviour
     public Text summaryText;
     public AchievementToast toast;
     public string nextScene;
+    public CultureTransition transition;
 
     int score = 100;
     float fuel;
@@ -57,7 +58,9 @@ public class LevelNarrator : MonoBehaviour
     // Wired to the summary card's Continue button.
     public void Continue()
     {
-        if (!string.IsNullOrEmpty(nextScene)) SceneLoader.Go(nextScene);
+        if (string.IsNullOrEmpty(nextScene)) return;
+        if (transition != null) transition.Play(level, () => SceneLoader.Go(nextScene));
+        else SceneLoader.Go(nextScene);
     }
 
     void Say(string line)

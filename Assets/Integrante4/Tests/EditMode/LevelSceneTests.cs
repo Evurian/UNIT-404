@@ -101,6 +101,18 @@ namespace Unit404.Integrante4.Tests
             Assert.GreaterOrEqual(GameObject.FindGameObjectsWithTag("Fragmento").Count(f => Mathf.Abs(f.transform.position.z) >= 6f), 2);
         }
 
+        [TestCase("Nivel1_Mesopotamia")]
+        [TestCase("Nivel2_Egipto")]
+        [TestCase("Nivel3_Grecia")]
+        [TestCase("Nivel4_China")]
+        public void Level_HasCultureTransitionWiredToNarrator(string sceneName)
+        {
+            Open(sceneName);
+            Assert.AreEqual(1, CountComponents("CultureTransition"));
+            var narrator = Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).First(m => m.GetType().Name == "LevelNarrator");
+            Assert.IsNotNull(narrator.GetType().GetField("transition").GetValue(narrator), "narrator.transition");
+        }
+
         [TestCase("Nivel1_Mesopotamia", 1)]
         [TestCase("Nivel2_Egipto", 2)]
         [TestCase("Nivel3_Grecia", 3)]
