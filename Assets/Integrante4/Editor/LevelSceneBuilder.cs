@@ -242,6 +242,8 @@ public static class LevelSceneBuilder
         }
         player.GetComponent<Renderer>().sharedMaterial = Mat(new Color(0.2f, 0.7f, 0.9f));
 
+        ApplyPalette(name[5] - '0');
+
         var hud = AssetDatabase.LoadAssetAtPath<GameObject>(HudPath);
         if (hud != null) PrefabUtility.InstantiatePrefab(hud);
         new GameObject("HudEventSimulator (solo pruebas)").AddComponent<HudEventSimulator>();
@@ -250,6 +252,29 @@ public static class LevelSceneBuilder
         FlowSceneBuilder.AddNarrator(level, level < 4 ? NextLevel[level] : "Despedida");
 
         EditorSceneManager.SaveScene(scene, Folder + name + ".unity");
+    }
+
+    // Culture look (odd/art-style-sheet.md): matte base on untagged scenery, emissive accent on pickups, rings, glyphs, checkpoints and the portal.
+    static void ApplyPalette(int level)
+    {
+        ColorUtility.TryParseHtmlString(Unit404.Integrante4.Core.CulturePalette.BaseHex(level), out Color baseColor);
+        ColorUtility.TryParseHtmlString(Unit404.Integrante4.Core.CulturePalette.AccentHex(level), out Color accent);
+        foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+        {
+            string tag = r.gameObject.tag;
+            bool accented = tag == "Fragmento" || tag == "Propulsor" || tag == "Glifo" || tag == "Checkpoint" || r.gameObject.name == "PortalLlegada";
+            if (accented)
+            {
+                var m = Mat(accent);
+                m.EnableKeyword("_EMISSION");
+                m.SetColor("_EmissionColor", accent * 1.5f);
+                r.sharedMaterial = m;
+            }
+            else if (tag == "Untagged" && r.gameObject.layer == Layer("Entorno") && r.gameObject.name != "JugadorTemporal")
+            {
+                r.sharedMaterial = Mat(baseColor);
+            }
+        }
     }
 
     // Safe fallbacks: a missing layer maps to Default, a missing tag is skipped with a warning.

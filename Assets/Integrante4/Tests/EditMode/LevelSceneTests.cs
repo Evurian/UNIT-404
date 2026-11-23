@@ -101,6 +101,26 @@ namespace Unit404.Integrante4.Tests
             Assert.GreaterOrEqual(GameObject.FindGameObjectsWithTag("Fragmento").Count(f => Mathf.Abs(f.transform.position.z) >= 6f), 2);
         }
 
+        [TestCase("Nivel1_Mesopotamia", 1)]
+        [TestCase("Nivel2_Egipto", 2)]
+        [TestCase("Nivel3_Grecia", 3)]
+        [TestCase("Nivel4_China", 4)]
+        public void Level_UsesCulturePalette_AccentOnPickupsAndRings(string sceneName, int level)
+        {
+            Open(sceneName);
+            ColorUtility.TryParseHtmlString(Unit404.Integrante4.Core.CulturePalette.AccentHex(level), out Color accent);
+            foreach (string tag in new[] { "Fragmento", "Propulsor", "Glifo" })
+            {
+                var go = GameObject.FindGameObjectsWithTag(tag).First();
+                var mat = go.GetComponent<Renderer>().sharedMaterial;
+                Assert.IsTrue(mat.IsKeywordEnabled("_EMISSION"), tag + " emission");
+                Color e = mat.GetColor("_EmissionColor");
+                Assert.AreEqual(accent.r * 1.5f, e.r, 0.01f, tag + " accent r");
+                Assert.AreEqual(accent.g * 1.5f, e.g, 0.01f, tag + " accent g");
+                Assert.AreEqual(accent.b * 1.5f, e.b, 0.01f, tag + " accent b");
+            }
+        }
+
         [TestCase("Nivel1_Mesopotamia")]
         [TestCase("Nivel2_Egipto")]
         public void Level1And2_HaveNoMovingObstacles(string sceneName)
