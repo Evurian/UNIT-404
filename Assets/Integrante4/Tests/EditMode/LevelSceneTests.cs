@@ -105,6 +105,27 @@ namespace Unit404.Integrante4.Tests
             }
         }
 
+        [TestCase("Inicio", "StartMenu")]
+        [TestCase("Carga", "LoadingScreen")]
+        public void FlowScenes_HaveTheirController(string sceneName, string component)
+        {
+            Open(sceneName);
+            Assert.AreEqual(1, CountComponents(component), component);
+            Assert.IsNotNull(Camera.main, "Main Camera missing");
+            Assert.IsNotNull(Object.FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>(), "EventSystem missing");
+        }
+
+        [TestCase("Nivel1_Mesopotamia")]
+        [TestCase("Nivel2_Egipto")]
+        [TestCase("Nivel3_Grecia")]
+        [TestCase("Nivel4_China")]
+        public void Levels_HavePauseMenu(string sceneName)
+        {
+            Open(sceneName);
+            Assert.AreEqual(1, CountComponents("PauseMenu"));
+            Assert.IsNotNull(Object.FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>(), "EventSystem missing");
+        }
+
         static int CountComponents(string typeName)
         {
             return Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).Count(m => m != null && m.GetType().Name == typeName);

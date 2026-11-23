@@ -20,6 +20,7 @@ public static class LevelSceneBuilder
         BuildLevel2();
         BuildLevel3();
         BuildLevel4();
+        FlowSceneBuilder.BuildFlowScenes();
         AssetDatabase.SaveAssets();
     }
 
@@ -234,6 +235,7 @@ public static class LevelSceneBuilder
         var hud = AssetDatabase.LoadAssetAtPath<GameObject>(HudPath);
         if (hud != null) PrefabUtility.InstantiatePrefab(hud);
         new GameObject("HudEventSimulator (solo pruebas)").AddComponent<HudEventSimulator>();
+        FlowSceneBuilder.AddPauseMenu();
 
         EditorSceneManager.SaveScene(scene, Folder + name + ".unity");
     }
