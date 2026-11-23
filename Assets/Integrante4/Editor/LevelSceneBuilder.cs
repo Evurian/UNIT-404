@@ -159,6 +159,7 @@ public static class LevelSceneBuilder
 
         Glyphs(root, new[] { 10f, 26f, 46f, 70f, 94f, 112f, 136f, 168f }, new[] { 3f, 5f, 2f, 7f, 8f, 9f, 11.5f, 11.5f }, "Inscripcion");
         Depth(root, new Color(0.5f, 0.55f, 0.4f), "ColinasTaladas", 190f);
+        SidePath(root, "Agora", 60f, 0f, 9f); SidePath(root, "Ladera", 100f, 4f, -9f); SidePath(root, "Templo", 140f, 9f, 9f);
         Finish(scene, new Vector3(2f, 2f, 0f), "Nivel3_Grecia", true);
     }
 
@@ -204,6 +205,7 @@ public static class LevelSceneBuilder
 
         Glyphs(root, new[] { 10f, 30f, 48f, 72f, 96f, 114f, 138f, 166f }, new[] { 4f, 6f, 5f, 6f, 9f, 9f, 8f, 7f }, "TiraBambu");
         Depth(root, new Color(0.45f, 0.5f, 0.45f), "Montañas", 190f);
+        SidePath(root, "Torre", 60f, 0f, -9f); SidePath(root, "Adarve", 100f, 5f, 9f); SidePath(root, "Tramo", 140f, 5f, -9f);
         Finish(scene, new Vector3(2f, 2f, 0f), "Nivel4_China", true);
     }
 
@@ -232,7 +234,12 @@ public static class LevelSceneBuilder
         player.AddComponent<Rigidbody>();
         var placeholder = player.AddComponent<PlaceholderPlayer>();
         placeholder.allowDepth = freeDepth;
-        if (freeDepth) Camera.main.GetComponent<SideCameraFollow>().followDepth = true;
+        if (freeDepth)
+        {
+            placeholder.cameraRelative = true;
+            Object.DestroyImmediate(Camera.main.GetComponent<SideCameraFollow>());
+            Camera.main.gameObject.AddComponent<ThirdPersonCamera>();
+        }
         player.GetComponent<Renderer>().sharedMaterial = Mat(new Color(0.2f, 0.7f, 0.9f));
 
         var hud = AssetDatabase.LoadAssetAtPath<GameObject>(HudPath);
@@ -291,6 +298,18 @@ public static class LevelSceneBuilder
         var mover = go.AddComponent<MovingObstacle>();
         mover.travel = travel;
         mover.speed = speed;
+    }
+
+    // Semi-open 3D worlds (levels 3-4): side platforms off the main line, each with fragments.
+    static void SidePath(Transform p, string name, float x, float y, float z)
+    {
+        Make(p, "SenderoLateral_" + name, PrimitiveType.Cube, new Vector3(x, y - 0.5f, z), new Vector3(14f, 1f, 6f), Wall, "Entorno");
+        for (int i = 0; i < 2; i++)
+        {
+            var go = Make(p, "Fragmento_Lateral_" + name + "_" + (i + 1), PrimitiveType.Sphere, new Vector3(x - 3f + i * 6f, y + 1.2f, z), Vector3.one * 0.6f, new Color(0.3f, 0.9f, 0.5f), "Coleccionable");
+            SetTag(go, "Fragmento");
+            go.GetComponent<Collider>().isTrigger = true;
+        }
     }
 
     static void Floor(Transform p, string name, float x0, float x1, float y)

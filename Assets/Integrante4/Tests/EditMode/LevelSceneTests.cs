@@ -79,6 +79,28 @@ namespace Unit404.Integrante4.Tests
             Assert.IsTrue((bool)placeholder.GetType().GetField("allowDepth").GetValue(placeholder), "3D flight must allow depth");
         }
 
+        [TestCase("Nivel3_Grecia")]
+        [TestCase("Nivel4_China")]
+        public void Level3And4_UseThirdPersonCameraAndCameraRelativePlayer(string sceneName)
+        {
+            Open(sceneName);
+            Assert.AreEqual(1, CountComponents("ThirdPersonCamera"));
+            Assert.AreEqual(0, CountComponents("SideCameraFollow"));
+            var placeholder = Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).First(m => m.GetType().Name == "PlaceholderPlayer");
+            Assert.IsTrue((bool)placeholder.GetType().GetField("cameraRelative").GetValue(placeholder));
+        }
+
+        [TestCase("Nivel3_Grecia")]
+        [TestCase("Nivel4_China")]
+        public void Level3And4_HaveSidePathsWithFragments(string sceneName)
+        {
+            Open(sceneName);
+            var paths = Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.name.StartsWith("SenderoLateral_")).ToArray();
+            Assert.GreaterOrEqual(paths.Length, 2, "side paths");
+            Assert.IsTrue(paths.All(t => Mathf.Abs(t.position.z) >= 6f), "side paths must leave the main line");
+            Assert.GreaterOrEqual(GameObject.FindGameObjectsWithTag("Fragmento").Count(f => Mathf.Abs(f.transform.position.z) >= 6f), 2);
+        }
+
         [TestCase("Nivel1_Mesopotamia")]
         [TestCase("Nivel2_Egipto")]
         public void Level1And2_HaveNoMovingObstacles(string sceneName)
