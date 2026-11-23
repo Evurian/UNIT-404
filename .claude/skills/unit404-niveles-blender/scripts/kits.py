@@ -84,7 +84,7 @@ def emissive_pickup(name, mat, loc, r=0.3):
 KITS = {"platform": platform, "column": column, "wall": wall, "tower": tower, "ship": ship}
 
 
-def build(culture, out):
+def build(culture, out, blend_dir):
     base, accent = PALETTE[culture]
     clear()
     matte = material(culture + "_matte", base)
@@ -102,7 +102,9 @@ def build(culture, out):
         bpy.ops.export_scene.fbx(filepath=os.path.join(out, o.name + ".fbx"), use_selection=True,
                                  apply_scale_options="FBX_SCALE_ALL", axis_forward="-Z", axis_up="Y")
         o.location = keep
-    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(out, culture + "_kit.blend"))
+    # .blend must live OUTSIDE Assets/: Unity would try to import it through Blender and fail without it on PATH
+    os.makedirs(blend_dir, exist_ok=True)
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(blend_dir, culture + "_kit.blend"))
     return [o.name for o in objs]
 
 
@@ -110,4 +112,5 @@ if __name__ == "__main__":
     a = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     culture = a[a.index("--culture") + 1]
     out = a[a.index("--out") + 1]
-    print("KIT_OK", build(culture, out))
+    blend_dir = a[a.index("--blend-dir") + 1] if "--blend-dir" in a else os.path.join(os.path.dirname(out.rstrip("/")), "_blend")
+    print("KIT_OK", build(culture, out, blend_dir))

@@ -11,8 +11,8 @@ Palette and rules: `odd/art-style-sheet.md` (dark matte base, ONE emissive colou
 ## Flow
 1. Pick the culture: `mesopotamia | egipto | grecia | china` (palette lives in `scripts/kits.py` `PALETTE`).
 2. Generate kit + FBX (headless, no MCP needed):
-   `~/Blender/blender-5.2.1-linux-x64/blender -b --python <skill>/scripts/kits.py -- --culture grecia --out Assets/Integrante4/Art/Grecia`
-   Output: one FBX per piece (`<culture>_platform|column|wall|tower|ship|pickup.fbx`) + `<culture>_kit.blend`.
+   `~/Blender/blender-5.2.1-linux-x64/blender -b --python <skill>/scripts/kits.py -- --culture grecia --out Assets/Integrante4/Art/Grecia --blend-dir "Assets/Integrante4/Art/BlenderSource~"`
+   Output: one FBX per piece (`<culture>_platform|column|wall|tower|ship|pickup.fbx`) + `Assets/Integrante4/Art/BlenderSource~/<culture>_kit.blend` (the trailing `~` makes Unity ignore the folder) (kept outside `Assets/`: Unity cannot import `.blend` without Blender on PATH).
 3. With the Blender MCP connected, tune parameters interactively (see `references/parametros.md`), then re-run step 2 so the export stays reproducible.
 4. Verify visually with the MCP (`look` / screenshot) when available; headless runs only prove export, not looks.
 5. In Unity, FBX pieces import at 1 unit = 1 m. Gameplay stays on Z = 0 for levels 1-2; levels 3-4 are semi-open 3D.
