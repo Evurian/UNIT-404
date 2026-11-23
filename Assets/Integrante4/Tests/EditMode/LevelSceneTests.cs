@@ -87,6 +87,24 @@ namespace Unit404.Integrante4.Tests
             Assert.AreEqual(0, CountComponents("MovingObstacle"));
         }
 
+        [TestCase("Nivel1_Mesopotamia")]
+        [TestCase("Nivel2_Egipto")]
+        [TestCase("Nivel3_Grecia")]
+        [TestCase("Nivel4_China")]
+        public void AllLevels_AreComplete_ObstaclesFragmentsRingsInEveryZone(string sceneName)
+        {
+            Open(sceneName);
+            Assert.GreaterOrEqual(GameObject.FindGameObjectsWithTag("Obstaculo").Length, 2, "obstacles");
+            Assert.GreaterOrEqual(GameObject.FindGameObjectsWithTag("Propulsor").Length, 6, "rings");
+            float[] edges = { 0f, 40f, 80f, 120f, 160f, 200f };
+            var fragments = GameObject.FindGameObjectsWithTag("Fragmento");
+            for (int zone = 0; zone < 5; zone++)
+            {
+                int inZone = fragments.Count(f => f.transform.position.x >= edges[zone] && f.transform.position.x < edges[zone + 1]);
+                Assert.GreaterOrEqual(inZone, 2, "fragments in zone " + (zone + 1));
+            }
+        }
+
         static int CountComponents(string typeName)
         {
             return Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).Count(m => m != null && m.GetType().Name == typeName);

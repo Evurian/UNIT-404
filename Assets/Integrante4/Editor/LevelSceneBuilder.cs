@@ -51,6 +51,9 @@ public static class LevelSceneBuilder
         Smoke(root, "Incienso_1", 96f, 4f); Smoke(root, "Incienso_2", 110f, 8f);
         Pickups(root, "Fragmento", 86f, 118f, 3, 8f);
         Ring(root, 100f, 9f);
+        Tagged(root, "Estaca_1", "Obstaculo", PrimitiveType.Cube, new Vector3(60f, 1f, 0f), new Vector3(0.6f, 2f, 0.6f), false, new Color(0.6f, 0.25f, 0.2f));
+        Tagged(root, "Estaca_2", "Obstaculo", PrimitiveType.Cube, new Vector3(112f, 1f, 0f), new Vector3(0.6f, 2f, 0.6f), false, new Color(0.6f, 0.25f, 0.2f));
+        Ring(root, 64f, 6f); Ring(root, 132f, 13f);
 
         // 4. Cima del zigurat (x 120-160): second checkpoint and Tiamat arena
         Solid(root, "Cima", 140f, 9f, 40f, 2f);
@@ -61,6 +64,7 @@ public static class LevelSceneBuilder
         // 5. Templo superior (x 160-190): arrival portal
         Solid(root, "Templo", 175f, 9f, 30f, 2f);
         Tagged(root, "PortalLlegada", "Plataforma", PrimitiveType.Cube, new Vector3(185f, 12f, 0f), new Vector3(2f, 4f, 1f), true);
+        Pickups(root, "Fragmento", 164f, 182f, 3, 11.5f);
 
         Glyphs(root, new[] { 8f, 22f, 46f, 70f, 94f, 112f, 136f, 168f }, new[] { 2f, 8f, 2f, 7f, 10f, 9f, 11.5f, 11.5f });
         Depth(root, new Color(0.5f, 0.42f, 0.3f), "CamposSalados", 190f);
@@ -92,7 +96,7 @@ public static class LevelSceneBuilder
         for (int i = 0; i < 6; i++) Solid(root, "Columna_" + (i + 1), 86f + i * 6f, 4f, 1.5f, 8f, Wall);
         for (int i = 0; i < 4; i++) Tagged(root, "Antorcha_" + (i + 1), "Obstaculo", PrimitiveType.Cube, new Vector3(89f + i * 9f, 3f, 0f), new Vector3(0.6f, 1.2f, 0.6f), false, new Color(0.9f, 0.45f, 0.1f));
         Pickups(root, "Fragmento", 84f, 118f, 3, 8f);
-        Ring(root, 102f, 8f);
+        Ring(root, 102f, 8f); Ring(root, 62f, 6f); Ring(root, 142f, 6f);
 
         // 4. Camara del Duat (x 120-160): second checkpoint and Apophis arena
         Solid(root, "CamaraDuat", 140f, -0.5f, 40f, 1f);
@@ -104,6 +108,7 @@ public static class LevelSceneBuilder
         // 5. Santuario (x 160-190): arrival portal
         Floor(root, "Suelo_Santuario", 160f, 190f, 0f);
         Tagged(root, "PortalLlegada", "Plataforma", PrimitiveType.Cube, new Vector3(185f, 3f, 0f), new Vector3(2f, 4f, 1f), true);
+        Pickups(root, "Fragmento", 164f, 182f, 3, 1.5f);
 
         Glyphs(root, new[] { 8f, 22f, 46f, 70f, 94f, 112f, 136f, 168f }, new[] { 2f, 8f, 2f, 7f, 9f, 9f, 2f, 2f });
         Depth(root, new Color(0.25f, 0.3f, 0.35f), "Nilo", 190f);
@@ -140,10 +145,13 @@ public static class LevelSceneBuilder
         Solid(root, "Ruinas", 140f, 9f, 40f, 2f);
         Tagged(root, "Checkpoint_2", "Checkpoint", PrimitiveType.Cube, new Vector3(124f, 11f, 0f), new Vector3(1f, 4f, 1f), true);
         Tagged(root, "Cronos", "Jefe", PrimitiveType.Capsule, new Vector3(150f, 12.5f, 0f), new Vector3(3f, 3f, 3f), false);
+        Pickups(root, "Fragmento", 126f, 156f, 3, 11.5f);
+        Ring(root, 62f, 6f); Ring(root, 110f, 8f); Ring(root, 134f, 14f);
 
         // 5. Altar (x 160-190): arrival portal
         Solid(root, "Altar", 175f, 9f, 30f, 2f);
         Tagged(root, "PortalLlegada", "Plataforma", PrimitiveType.Cube, new Vector3(185f, 12f, 0f), new Vector3(2f, 4f, 1f), true);
+        Pickups(root, "Fragmento", 164f, 182f, 3, 11.5f);
 
         Glyphs(root, new[] { 10f, 26f, 46f, 70f, 94f, 112f, 136f, 168f }, new[] { 3f, 5f, 2f, 7f, 8f, 9f, 11.5f, 11.5f }, "Inscripcion");
         Depth(root, new Color(0.5f, 0.55f, 0.4f), "ColinasTaladas", 190f);
@@ -182,10 +190,13 @@ public static class LevelSceneBuilder
         Tagged(root, "Checkpoint_2", "Checkpoint", PrimitiveType.Cube, new Vector3(124f, 8f, 0f), new Vector3(1f, 4f, 1f), true);
         Tagged(root, "Chiyou", "Jefe", PrimitiveType.Capsule, new Vector3(150f, 8.5f, 0f), new Vector3(3f, 3f, 3f), false);
         Solid(root, "Mastil_1", 130f, 9f, 0.5f, 8f, Wall);
+        Pickups(root, "Fragmento", 126f, 156f, 3, 8f);
+        Ring(root, 60f, 10f); Ring(root, 104f, 10f); Ring(root, 142f, 10f);
 
         // 5. Torre del estandarte (x 160-190): arrival portal
         Solid(root, "Torre_Estandarte", 180f, 6f, 8f, 12f, Wall);
         Tagged(root, "PortalLlegada", "Plataforma", PrimitiveType.Cube, new Vector3(180f, 13f, 0f), new Vector3(2f, 4f, 1f), true);
+        Pickups(root, "Fragmento", 162f, 172f, 3, 8f);
 
         Glyphs(root, new[] { 10f, 30f, 48f, 72f, 96f, 114f, 138f, 166f }, new[] { 4f, 6f, 5f, 6f, 9f, 9f, 8f, 7f }, "TiraBambu");
         Depth(root, new Color(0.45f, 0.5f, 0.45f), "Montañas", 190f);
