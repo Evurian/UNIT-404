@@ -17,8 +17,13 @@ Palette and rules: `odd/art-style-sheet.md` (dark matte base, ONE emissive colou
 4. Verify visually with the MCP (`look` / screenshot) when available; headless runs only prove export, not looks.
 5. In Unity, FBX pieces import at 1 unit = 1 m. Gameplay stays on Z = 0 for levels 1-2; levels 3-4 are semi-open 3D.
 
+## Unity fit (verified in batchmode)
+- Export uses `bake_space_transform=True`: without it the FBX root carries a 270 deg X rotation and Unity pieces lie on their side.
+- Every piece has its origin at the centre of its base. Nominal sizes (width, height, depth): platform 8x1x4, column 1.4x6x1.4, wall 10x5x1, tower 5.6x8x5.6, ship 6x1.6x2. `LevelSceneBuilder.ApplyKit` scales a piece to its grey block (the block stays as collider, its renderer is disabled).
+- Materials are matched by name in Unity (`*_matte`, `*_trim`) and replaced by palette materials; silhouettes per culture live in `STYLE` in `kits.py`.
+
 ## Rules
-- Pieces are exported centred at origin with transforms applied (scale 1).
+- Pieces are exported with their origin at the base centre and transforms applied (scale 1).
 - Do not change gameplay shapes/sizes of pickups; only materials.
 - Never write outside `Assets/Integrante4/Art/<Cultura>/`.
 - Blender 5.x: do not rely on the default `Principled BSDF` node existing (the script creates it).
