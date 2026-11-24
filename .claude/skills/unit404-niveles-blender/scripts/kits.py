@@ -122,6 +122,188 @@ def stone_material(name, base_hex, accent_hex, st, trim=False):
     return m
 
 
+# ---------------- day materials (ODD S23 a, T16): lit culture landscape on the route ----------------
+# Per culture: stone = main surfaces, trim = bases, capitals, pilasters, undersides.
+#   kind brick: (colour 1, colour 2, mortar, brick width m, row height m), also used for ashlar courses   kind ashlar: (colour 1, colour 2, joint, block scale)
+#   bands: (band colour, bands per metre, band share) painted horizontal stripes; veins: marble veining colour
+DAY = {
+    "mesopotamia": dict(  # sun-dried mud brick + glazed blue tiles with gold joints (Ishtar-gate style)
+        stone=dict(kind="brick", c=("#C9A46C", "#B48A55", "#8C6C45", 0.5, 0.18), rough=0.95, bump=0.6),
+        trim=dict(kind="brick", c=("#1F4E9A", "#2D66BE", "#C99A2E", 0.32, 0.32), rough=0.35, bump=0.3)),
+    "egipto": dict(  # warm sandstone ashlar + painted limestone with teal and ochre bands
+        stone=dict(kind="brick", c=("#DDBB82", "#C9A46C", "#A8875A", 1.0, 0.5), rough=0.9, bump=0.5),
+        trim=dict(kind="ashlar", c=("#EAE0C8", "#DCD0B4", "#B8AA8A", 0.8), rough=0.75, bump=0.3, bands=("#2E9C8F", 1.6, 0.14))),
+    "grecia": dict(  # white marble ashlar with grey veins + terracotta tiles
+        stone=dict(kind="brick", c=("#EFEDE7", "#E2DED5", "#C4BEB2", 1.2, 0.6), rough=0.45, bump=0.25, veins="#9C978F"),
+        trim=dict(kind="brick", c=("#B65C33", "#A04B27", "#7A3A1E", 0.4, 0.2), rough=0.8, bump=0.4)),
+    "china": dict(  # grey fired brick + red lacquer with jade bands
+        stone=dict(kind="brick", c=("#93918B", "#7F7D78", "#5E5C58", 0.4, 0.12), rough=0.9, bump=0.5),
+        trim=dict(kind="ashlar", c=("#A32019", "#8E1A14", "#8E1A14", 0.3), rough=0.4, bump=0.1, bands=("#3E9E73", 1.2, 0.12))),
+}
+
+
+def _rgba(h):
+    return (*hex_lin(h), 1.0)
+
+
+def _triplanar(nt, coord, make_tex):
+    """Project a 2D texture along X, Y and Z of object space and blend by the face normal, so bricks keep their
+    size on every face. make_tex(vector_socket) -> (color_socket, fac_socket). Returns blended (color, fac)."""
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(coord.outputs["Object"], sep.inputs[0])
+    planes = []
+    for a, b in (("Y", "Z"), ("X", "Z"), ("X", "Y")):
+        comb = nt.nodes.new("ShaderNodeCombineXYZ")
+        nt.links.new(sep.outputs[a], comb.inputs["X"])
+        nt.links.new(sep.outputs[b], comb.inputs["Y"])
+        planes.append(make_tex(comb.outputs[0]))
+    nsep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(coord.outputs["Normal"], nsep.inputs[0])
+    w = []
+    for axis in "XYZ":
+        ab = nt.nodes.new("ShaderNodeMath"); ab.operation = "ABSOLUTE"
+        nt.links.new(nsep.outputs[axis], ab.inputs[0])
+        pw = nt.nodes.new("ShaderNodeMath"); pw.operation = "POWER"; pw.inputs[1].default_value = 8.0
+        nt.links.new(ab.outputs[0], pw.inputs[0])
+        w.append(pw.outputs[0])
+    # sequential blend: X vs Y by wy/(wx+wy), then that vs Z by wz/(wx+wy+wz)
+    sxy = nt.nodes.new("ShaderNodeMath"); sxy.operation = "ADD"
+    nt.links.new(w[0], sxy.inputs[0]); nt.links.new(w[1], sxy.inputs[1])
+    fxy = nt.nodes.new("ShaderNodeMath"); fxy.operation = "DIVIDE"
+    nt.links.new(w[1], fxy.inputs[0]); nt.links.new(sxy.outputs[0], fxy.inputs[1])
+    sall = nt.nodes.new("ShaderNodeMath"); sall.operation = "ADD"
+    nt.links.new(sxy.outputs[0], sall.inputs[0]); nt.links.new(w[2], sall.inputs[1])
+    fz = nt.nodes.new("ShaderNodeMath"); fz.operation = "DIVIDE"
+    nt.links.new(w[2], fz.inputs[0]); nt.links.new(sall.outputs[0], fz.inputs[1])
+    out = []
+    for idx, dtype in ((0, "RGBA"), (1, "FLOAT")):
+        m1 = nt.nodes.new("ShaderNodeMix"); m1.data_type = dtype
+        m2 = nt.nodes.new("ShaderNodeMix"); m2.data_type = dtype
+        ins = (lambda m: (m.inputs[6], m.inputs[7], m.outputs[2])) if dtype == "RGBA" else (lambda m: (m.inputs[2], m.inputs[3], m.outputs[0]))
+        a1, b1, o1 = ins(m1); a2, b2, o2 = ins(m2)
+        nt.links.new(fxy.outputs[0], m1.inputs[0])
+        nt.links.new(planes[0][idx], a1); nt.links.new(planes[1][idx], b1)
+        nt.links.new(fz.outputs[0], m2.inputs[0])
+        nt.links.new(o1, a2); nt.links.new(planes[2][idx], b2)
+        out.append(o2)
+    return out[0], out[1]
+
+
+def day_material(name, spec):
+    """Lit, matte culture surface without glowing cracks: colour variation noise + bricks or ashlar joints + bump."""
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    nt = m.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    bsdf = nt.nodes.new("ShaderNodeBsdfPrincipled")
+    nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
+    bsdf.inputs["Roughness"].default_value = spec["rough"]
+    coord = nt.nodes.new("ShaderNodeTexCoord")
+    c1, c2, joint_hex, *size = spec["c"]
+
+    grain = nt.nodes.new("ShaderNodeTexNoise")  # weathering / sun-faded variation
+    grain.inputs["Scale"].default_value = 2.5
+    grain.inputs["Detail"].default_value = 8.0
+    nt.links.new(coord.outputs["Object"], grain.inputs["Vector"])
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].color = _rgba(c2)
+    ramp.color_ramp.elements[1].color = _rgba(c1)
+    nt.links.new(grain.outputs["Fac"], ramp.inputs["Fac"])
+    surface = ramp.outputs["Color"]
+
+    if spec["kind"] == "brick":
+        bw, rh = size
+
+        def make(vec):
+            b = nt.nodes.new("ShaderNodeTexBrick")
+            b.inputs["Color1"].default_value = _rgba(c1)
+            b.inputs["Color2"].default_value = _rgba(c2)
+            b.inputs["Mortar"].default_value = _rgba(joint_hex)
+            b.inputs["Scale"].default_value = 1.0
+            b.inputs["Mortar Size"].default_value = 0.012
+            b.inputs["Brick Width"].default_value = bw
+            b.inputs["Row Height"].default_value = rh
+            nt.links.new(vec, b.inputs["Vector"])
+            return b.outputs["Color"], b.outputs["Fac"]
+        bricks, joint = _triplanar(nt, coord, make)
+        # bricks carry their own colours; the grain noise only shades them
+        shade = nt.nodes.new("ShaderNodeMix"); shade.data_type = "RGBA"; shade.blend_type = "MULTIPLY"
+        shade.inputs[0].default_value = 0.35
+        nt.links.new(bricks, shade.inputs[6]); nt.links.new(surface, shade.inputs[7])
+        surface = shade.outputs[2]
+        inside = nt.nodes.new("ShaderNodeMath"); inside.operation = "SUBTRACT"; inside.inputs[0].default_value = 1.0
+        nt.links.new(joint, inside.inputs[1])
+        height_in = inside.outputs[0]
+    else:
+        blocks = nt.nodes.new("ShaderNodeTexVoronoi")
+        blocks.feature = "DISTANCE_TO_EDGE"
+        blocks.inputs["Scale"].default_value = size[0]
+        nt.links.new(coord.outputs["Object"], blocks.inputs["Vector"])
+        jr = nt.nodes.new("ShaderNodeMapRange")
+        jr.inputs["From Min"].default_value, jr.inputs["From Max"].default_value = 0.0, 0.03
+        nt.links.new(blocks.outputs["Distance"], jr.inputs["Value"])  # 0 at the joint, 1 inside
+        mix = nt.nodes.new("ShaderNodeMix"); mix.data_type = "RGBA"
+        nt.links.new(jr.outputs["Result"], mix.inputs[0])
+        mix.inputs[6].default_value = _rgba(joint_hex)
+        nt.links.new(surface, mix.inputs[7])
+        surface = mix.outputs[2]
+        height_in = jr.outputs["Result"]
+
+    if spec.get("veins"):  # marble: thin distorted wave lines
+        wave = nt.nodes.new("ShaderNodeTexWave")
+        wave.inputs["Scale"].default_value = 1.2
+        wave.inputs["Distortion"].default_value = 12.0
+        wave.inputs["Detail"].default_value = 6.0
+        nt.links.new(coord.outputs["Object"], wave.inputs["Vector"])
+        vr = nt.nodes.new("ShaderNodeMapRange")
+        vr.inputs["From Min"].default_value, vr.inputs["From Max"].default_value = 0.0, 0.08
+        vr.inputs["To Min"].default_value, vr.inputs["To Max"].default_value = 0.55, 0.0
+        nt.links.new(wave.outputs["Fac"], vr.inputs["Value"])
+        vm = nt.nodes.new("ShaderNodeMix"); vm.data_type = "RGBA"
+        nt.links.new(vr.outputs["Result"], vm.inputs[0])
+        nt.links.new(surface, vm.inputs[6])
+        vm.inputs[7].default_value = _rgba(spec["veins"])
+        surface = vm.outputs[2]
+
+    if spec.get("bands"):  # painted horizontal stripes (object Z)
+        band_hex, per_m, share = spec["bands"]
+        sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+        nt.links.new(coord.outputs["Object"], sep.inputs[0])
+        sc = nt.nodes.new("ShaderNodeMath"); sc.operation = "MULTIPLY"; sc.inputs[1].default_value = per_m
+        nt.links.new(sep.outputs["Z"], sc.inputs[0])
+        fr = nt.nodes.new("ShaderNodeMath"); fr.operation = "FRACT"
+        nt.links.new(sc.outputs[0], fr.inputs[0])
+        lt = nt.nodes.new("ShaderNodeMath"); lt.operation = "LESS_THAN"; lt.inputs[1].default_value = share
+        nt.links.new(fr.outputs[0], lt.inputs[0])
+        # stripes only on vertical faces: a horizontal face has one Z and would fall entirely inside a band
+        nz = nt.nodes.new("ShaderNodeSeparateXYZ")
+        nt.links.new(coord.outputs["Normal"], nz.inputs[0])
+        az = nt.nodes.new("ShaderNodeMath"); az.operation = "ABSOLUTE"
+        nt.links.new(nz.outputs["Z"], az.inputs[0])
+        side = nt.nodes.new("ShaderNodeMath"); side.operation = "LESS_THAN"; side.inputs[1].default_value = 0.5
+        nt.links.new(az.outputs[0], side.inputs[0])
+        both = nt.nodes.new("ShaderNodeMath"); both.operation = "MULTIPLY"
+        nt.links.new(lt.outputs[0], both.inputs[0]); nt.links.new(side.outputs[0], both.inputs[1])
+        bm = nt.nodes.new("ShaderNodeMix"); bm.data_type = "RGBA"
+        nt.links.new(both.outputs[0], bm.inputs[0])
+        nt.links.new(surface, bm.inputs[6])
+        bm.inputs[7].default_value = _rgba(band_hex)
+        surface = bm.outputs[2]
+
+    nt.links.new(surface, bsdf.inputs["Base Color"])
+    height = nt.nodes.new("ShaderNodeMath"); height.operation = "MULTIPLY_ADD"  # grain * 0.25 + inside
+    nt.links.new(grain.outputs["Fac"], height.inputs[0])
+    height.inputs[1].default_value = 0.25
+    nt.links.new(height_in, height.inputs[2])
+    bump = nt.nodes.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = spec["bump"]
+    bump.inputs["Distance"].default_value = 0.04
+    nt.links.new(height.outputs["Value"], bump.inputs["Height"])
+    nt.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+    return m
+
+
 def template_basalt():
     """The teammate's exact boss-arena ground material, appended from the Apophis template (ODD S23)."""
     with bpy.data.libraries.load(TEMPLATE, link=False) as (src, dst):
@@ -285,8 +467,13 @@ KITS = {"platform": platform, "column": column, "wall": wall, "tower": tower, "s
 
 
 # ---------------- bake ----------------
-def bake_maps(o, out, size=BAKE_SIZE):
-    """Smart-UV the piece and bake albedo / tangent normal / emission to PNGs next to its FBX."""
+MAPS = (("albedo", "DIFFUSE", "sRGB"), ("normal", "NORMAL", "Non-Color"), ("emission", "EMIT", "sRGB"))
+
+
+def bake_maps(o, out, size=BAKE_SIZE, prefix=None, kinds=("albedo", "normal", "emission"), unwrap=True):
+    """Smart-UV the piece (unless unwrap=False: reuse its UVs) and bake the maps in `kinds` to
+    <prefix>_<kind>.png next to its FBX (prefix defaults to the object name)."""
+    prefix = prefix or o.name
     scn = bpy.context.scene
     try:
         scn.render.engine = "CYCLES"
@@ -297,12 +484,13 @@ def bake_maps(o, out, size=BAKE_SIZE):
     bpy.ops.object.select_all(action="DESELECT")
     o.select_set(True)
     bpy.context.view_layer.objects.active = o
-    bpy.ops.object.mode_set(mode="EDIT")
-    bpy.ops.mesh.select_all(action="SELECT")
-    bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.02)
-    bpy.ops.object.mode_set(mode="OBJECT")
-    for kind, btype, colorspace in (("albedo", "DIFFUSE", "sRGB"), ("normal", "NORMAL", "Non-Color"), ("emission", "EMIT", "sRGB")):
-        img = bpy.data.images.new(f"{o.name}_{kind}", size, size, alpha=False)
+    if unwrap:
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mesh.select_all(action="SELECT")
+        bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.02)
+        bpy.ops.object.mode_set(mode="OBJECT")
+    for kind, btype, colorspace in (m for m in MAPS if m[0] in kinds):
+        img = bpy.data.images.new(f"{prefix}_{kind}", size, size, alpha=False)
         img.colorspace_settings.name = colorspace
         for slot in o.material_slots:
             nt = slot.material.node_tree
@@ -314,7 +502,7 @@ def bake_maps(o, out, size=BAKE_SIZE):
         if btype == "DIFFUSE":
             kw["pass_filter"] = {"COLOR"}
         bpy.ops.object.bake(**kw)
-        img.filepath_raw = os.path.join(out, f"{o.name}_{kind}.png")
+        img.filepath_raw = os.path.join(out, f"{prefix}_{kind}.png")
         img.file_format = "PNG"
         img.save()
 
@@ -330,10 +518,14 @@ def export_fbx(o, out):
     o.location = keep
 
 
-def build(culture, out, blend_dir, save_blend=True, bake=True):
+def build(culture, out, blend_dir, save_blend=True, bake=True, size=BAKE_SIZE):
+    """Culture kits (ODD S23, T16): every piece is baked with the lit DAY material (albedo + normal, no glow) for the
+    route. The platform is also baked, on the same UVs, with the dark night stone + glowing cracks as
+    <culture>_arena_platform_* for the boss arena (Egipto, Grecia, China; Mesopotamia's arena uses the `arena` kit)."""
     clear()
     os.makedirs(out, exist_ok=True)
     objs = []
+    night = {}
     if culture == "arena":
         basalt = template_basalt()
         o = platform("arena_platform", STYLE["grecia"], basalt, basalt)
@@ -341,15 +533,28 @@ def build(culture, out, blend_dir, save_blend=True, bake=True):
     else:
         base, accent = PALETTE[culture]
         st = STYLE[culture]
-        stone = stone_material(culture + "_stone", base, accent, st)
-        trim = stone_material(culture + "_trim", base, accent, st, trim=True)
+        stone = day_material(culture + "_stone", DAY[culture]["stone"])
+        trim = day_material(culture + "_trim", DAY[culture]["trim"])
+        if culture != "mesopotamia":
+            night = {stone.name: stone_material(culture + "_arena_stone", base, accent, st),
+                     trim.name: stone_material(culture + "_arena_trim", base, accent, st, trim=True)}
         for i, (kind, fn) in enumerate(KITS.items()):
             o = fn(f"{culture}_{kind}", st, stone, trim)
             o.location = (i * 12.0, 0.0, 0.0)
             objs.append(o)
     for o in objs:
         if bake:
-            bake_maps(o, out)
+            if culture == "arena":
+                bake_maps(o, out, size)
+            else:
+                bake_maps(o, out, size, kinds=("albedo", "normal"))
+                if night and o.name.endswith("_platform"):
+                    day = [s.material for s in o.material_slots]
+                    for s in o.material_slots:
+                        s.material = night[s.material.name]
+                    bake_maps(o, out, size, prefix=f"{culture}_arena_platform", unwrap=False)
+                    for s, m in zip(o.material_slots, day):
+                        s.material = m
         export_fbx(o, out)
     if culture != "arena":
         p = emissive_pickup(f"{culture}_pickup", PALETTE[culture][1], (len(KITS) * 12.0, 0.0, 1.0))
@@ -367,4 +572,5 @@ if __name__ == "__main__":
     culture = a[a.index("--culture") + 1]
     out = a[a.index("--out") + 1]
     blend_dir = a[a.index("--blend-dir") + 1] if "--blend-dir" in a else ""
-    print("KIT_OK", build(culture, out, blend_dir, bake="--no-bake" not in a))
+    size = int(a[a.index("--size") + 1]) if "--size" in a else BAKE_SIZE
+    print("KIT_OK", build(culture, out, blend_dir, bake="--no-bake" not in a, size=size))
