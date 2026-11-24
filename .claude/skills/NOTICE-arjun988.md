@@ -1,0 +1,1 @@
+Skills unity-export, environment-artist, historical-worlds and references/asset-pipeline.md, naming-conventions.md are copied unmodified from https://github.com/arjun988/blender-skills (MIT, commit 904f095). Each SKILL.md was read before install; only this subset is used by UNIT-404 (see unit404-niveles-blender).
