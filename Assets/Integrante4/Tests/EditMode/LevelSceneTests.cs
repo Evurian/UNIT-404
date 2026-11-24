@@ -214,7 +214,9 @@ namespace Unit404.Integrante4.Tests
             // The grey primitive stays as the collider but no longer renders.
             foreach (var k in kits)
             {
-                var host = k.transform.parent.Find(k.gameObject.name.Substring("Kit_".Length));
+                string hostName = k.gameObject.name.Substring("Kit_".Length);
+                // blocks get a sibling skin; gameplay elements (T18) carry it as a child so it moves and hides with them
+                var host = k.transform.parent.name == hostName ? k.transform.parent : k.transform.parent.Find(hostName);
                 Assert.IsNotNull(host, k.gameObject.name + " host block");
                 Assert.IsNotNull(host.GetComponent<Collider>(), host.name + " keeps its collider");
                 Assert.IsFalse(host.GetComponent<Renderer>().enabled, host.name + " grey renderer off");
@@ -492,6 +494,136 @@ namespace Unit404.Integrante4.Tests
         }
 
         // True when the z ranges of the boxes, merged, cover [from, to].
+        // ODD T17: the blocks that were stretched walls or tiled slabs get their own kit piece, flat top = collider top.
+        [TestCase("Nivel1_Mesopotamia", "Terraza_1", "mesopotamia_stairs")]
+        [TestCase("Nivel1_Mesopotamia", "Terraza_Orilla", "mesopotamia_stairs")]
+        [TestCase("Nivel2_Egipto", "Bloque_Piedra_2", "egipto_block")]
+        [TestCase("Nivel4_China", "Mastil_1", "china_mast")]
+        [TestCase("Nivel4_China", "Torre_Estandarte", "china_keep")]
+        public void DetailedKitPieces_SkinTheirBlocks_TopMatchesCollider(string sceneName, string block, string mesh)
+        {
+            Open(sceneName);
+            var host = GameObject.Find(block);
+            var kit = host.transform.parent.Find("Kit_" + block);
+            Assert.IsNotNull(kit, "Kit_" + block);
+            Assert.AreEqual(mesh, kit.GetComponent<MeshFilter>().sharedMesh.name);
+            Bounds col = host.GetComponent<Collider>().bounds, vis = kit.GetComponent<Renderer>().bounds;
+            Assert.AreEqual(col.max.y, vis.max.y, mesh == "china_mast" ? 0.6f : 0.05f, block + " visible top vs collider top");
+            Assert.AreEqual(col.min.y, vis.min.y, 0.05f, block + " stands on the collider base");
+        }
+
+        // ODD T18: pickups, rings, glyphs, checkpoints and obstacles keep their collider and wear a culture element
+        // as a child that fills the same box.
+        [TestCase("Nivel1_Mesopotamia", "mesopotamia", "Estaca", "stake")]
+        [TestCase("Nivel2_Egipto", "egipto", "Antorcha", "torch")]
+        [TestCase("Nivel3_Grecia", "grecia", "Tronco", "log")]
+        [TestCase("Nivel3_Grecia", "grecia", "ColumnaCaida", "drum")]
+        [TestCase("Nivel4_China", "china", "Carreta", "cart")]
+        public void GameplayElements_WearCultureArt_InsideTheirCollider(string sceneName, string culture, string obstacle, string obstacleArt)
+        {
+            Open(sceneName);
+            var expected = new System.Collections.Generic.List<(GameObject go, string art)>();
+            foreach (var pair in new[] { ("Fragmento", "crystal"), ("Propulsor", "ring"), ("Glifo", "tablet"), ("Checkpoint", "checkpoint") })
+                expected.AddRange(GameObject.FindGameObjectsWithTag(pair.Item1).Select(g => (g, pair.Item2)));
+            var obstacles = Object.FindObjectsByType<Transform>(FindObjectsSortMode.None)
+                .Where(t => t.name.StartsWith(obstacle + "_") && t.GetComponent<Collider>() != null).Select(t => (t.gameObject, obstacleArt)).ToArray();
+            Assert.Greater(obstacles.Length, 0, obstacle + " obstacles");
+            expected.AddRange(obstacles);
+            foreach (var (go, art) in expected)
+            {
+                var kit = go.transform.Find("Kit_" + go.name);
+                Assert.IsNotNull(kit, go.name + " art child");
+                Assert.AreEqual(culture + "_" + art, kit.GetComponent<MeshFilter>().sharedMesh.name, go.name);
+                Assert.IsFalse(go.GetComponent<Renderer>().enabled, go.name + " grey primitive hidden");
+                Assert.IsNotNull(go.GetComponent<Collider>(), go.name + " keeps its collider");
+                Bounds col = go.GetComponent<Collider>().bounds, vis = kit.GetComponent<Renderer>().bounds;
+                col.Expand(0.3f);
+                Assert.IsTrue(col.Contains(vis.min) && col.Contains(vis.max), go.name + " art stays inside its collider: " + vis + " vs " + col);
+            }
+        }
+
+        [TestCase("Nivel1_Mesopotamia", "mesopotamia")]
+        [TestCase("Nivel2_Egipto", "egipto")]
+        [TestCase("Nivel3_Grecia", "grecia")]
+        [TestCase("Nivel4_China", "china")]
+        public void ArrivalPad_HasACulturePortalArch_WithoutCollider(string sceneName, string culture)
+        {
+            Open(sceneName);
+            var arch = GameObject.Find("PortalArco");
+            Assert.IsNotNull(arch);
+            Assert.AreEqual(culture + "_arch", arch.GetComponentInChildren<MeshFilter>().sharedMesh.name);
+            Assert.AreEqual(0, arch.GetComponentsInChildren<Collider>().Length, "decoration only");
+            Assert.AreEqual(GameObject.Find("PortalLlegada").transform.position.x, arch.transform.position.x, 0.01f);
+        }
+
+        // ODD S17 / T19: three modelled depth layers per culture replace the grey Fondo_* boxes; they stay outside the
+        // play area (2.5D behind the path, 3D on both sides of it) and have no colliders.
+        [TestCase("Nivel1_Mesopotamia", "mesopotamia", false)]
+        [TestCase("Nivel2_Egipto", "egipto", false)]
+        [TestCase("Nivel3_Grecia", "grecia", true)]
+        [TestCase("Nivel4_China", "china", true)]
+        public void Backdrops_AreThreeCultureLayers_OutsideThePlayArea(string sceneName, string culture, bool bothSides)
+        {
+            Open(sceneName);
+            Assert.AreEqual(0, Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Count(t => t.name.StartsWith("Fondo_")), "grey boxes gone");
+            var layers = Object.FindObjectsByType<MeshFilter>(FindObjectsSortMode.None)
+                .Where(m => m.sharedMesh != null && m.sharedMesh.name.StartsWith(culture + "_bg_")).ToArray();
+            CollectionAssert.AreEquivalent(new[] { culture + "_bg_far", culture + "_bg_mid", culture + "_bg_near" },
+                layers.Select(m => m.sharedMesh.name).Distinct().ToArray());
+            float playEdge = Object.FindObjectsByType<Transform>(FindObjectsSortMode.None)
+                .Where(t => t.name == "Limites_Izquierda" || t.name == "Limites_Derecha").Max(t => t.GetComponent<Collider>().bounds.max.z);
+            foreach (var m in layers)
+            {
+                Assert.AreEqual(0, m.GetComponentsInChildren<Collider>().Length, m.name + " no collider");
+                Bounds b = m.GetComponent<Renderer>().bounds;
+                Assert.Greater(Mathf.Min(Mathf.Abs(b.min.z), Mathf.Abs(b.max.z)), playEdge, m.name + " outside the play area: " + b);
+                Assert.IsTrue(b.min.z > 0f || b.max.z < 0f, m.name + " stays on one side");
+            }
+            Assert.IsTrue(layers.Any(m => m.transform.position.z > 0f));
+            Assert.AreEqual(bothSides, layers.Any(m => m.transform.position.z < 0f), "3D worlds have scenery on both sides");
+            var levelX = Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.name == "PortalLlegada" || t.name == "PlayerStart").Select(t => t.position.x).ToArray();
+            foreach (string layer in new[] { "near", "mid", "far" })
+            {
+                var strip = layers.Where(m => m.sharedMesh.name.EndsWith(layer) && m.transform.position.z > 0f).Select(m => m.GetComponent<Renderer>().bounds).ToArray();
+                Assert.LessOrEqual(strip.Min(b => b.min.x), levelX.Min() - 10f, layer + " starts before the level");
+                Assert.GreaterOrEqual(strip.Max(b => b.max.x), levelX.Max() + 10f, layer + " runs past the portal");
+            }
+        }
+
+        // ODD S22 / T18 (L46 visual check): the 40 m hillsides of level 4 are tiled Great Wall pieces, not stretched slabs.
+        [Test]
+        public void Level4_Hillsides_AreTiledWallPieces()
+        {
+            Open("Nivel4_China");
+            foreach (string side in new[] { "Ladera_Izq", "Ladera_Der" })
+            {
+                var host = GameObject.Find(side);
+                var pieces = host.transform.parent.Cast<Transform>().Where(t => t.name == "Kit_" + side).ToArray();
+                Assert.AreEqual(4, pieces.Length, side + " 10 m wall pieces");
+                Assert.IsTrue(pieces.All(t => t.GetComponent<MeshFilter>().sharedMesh.name == "china_wall"), side);
+                Bounds col = host.GetComponent<Collider>().bounds;
+                Assert.LessOrEqual(pieces.Min(t => t.GetComponent<Renderer>().bounds.min.x), col.min.x + 0.05f);
+                Assert.GreaterOrEqual(pieces.Max(t => t.GetComponent<Renderer>().bounds.max.x), col.max.x - 0.05f);
+            }
+        }
+
+        // ODD S22 (L46 visual check): pollution hazards (incense, dust storm) read as translucent haze, not solid blocks.
+        [TestCase("Nivel1_Mesopotamia")]
+        [TestCase("Nivel4_China")]
+        public void Hazards_AreTranslucentHaze(string sceneName)
+        {
+            Open(sceneName);
+            var hazards = GameObject.FindGameObjectsWithTag("Contaminacion");
+            Assert.Greater(hazards.Length, 0);
+            foreach (var h in hazards)
+            {
+                var mat = h.GetComponent<Renderer>().sharedMaterial;
+                Assert.Less(mat.color.a, 0.5f, h.name + " alpha");
+                Assert.GreaterOrEqual(mat.renderQueue, 3000, h.name + " transparent queue");
+                Assert.IsTrue(h.GetComponent<Collider>().isTrigger, h.name + " stays a trigger");
+            }
+        }
+
         static bool Covers(Bounds[] boxes, float from, float to)
         {
             float reach = from;

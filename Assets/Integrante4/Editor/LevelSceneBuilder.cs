@@ -75,7 +75,6 @@ public static class LevelSceneBuilder
         Pickups(root, "Fragmento", 164f, 182f, 3, 11.5f);
 
         Glyphs(root, new[] { 8f, 22f, 46f, 70f, 94f, 112f, 136f, 168f }, new[] { 2f, 8f, 2f, 7f, 10f, 9f, 11.5f, 11.5f });
-        Depth(root, new Color(0.5f, 0.42f, 0.3f), "CamposSalados", 190f);
         Finish(scene, new Vector3(2f, 2f, 0f), "Nivel1_Mesopotamia");
     }
 
@@ -120,7 +119,6 @@ public static class LevelSceneBuilder
         Pickups(root, "Fragmento", 164f, 182f, 3, 1.5f);
 
         Glyphs(root, new[] { 8f, 22f, 46f, 70f, 94f, 112f, 136f, 168f }, new[] { 2f, 8f, 2f, 7f, 9f, 9f, 2f, 2f });
-        Depth(root, new Color(0.25f, 0.3f, 0.35f), "Nilo", 190f);
         Finish(scene, new Vector3(2f, 2f, 0f), "Nivel2_Egipto");
     }
 
@@ -177,7 +175,6 @@ public static class LevelSceneBuilder
         Pickups(root, "Fragmento", 164f, 182f, 3, 11.5f);
 
         Glyphs(root, new[] { 10f, 26f, 46f, 70f, 94f, 112f, 136f, 168f }, new[] { 3f, 5f, 2f, 7f, 8f, 9f, 11.5f, 11.5f }, "Inscripcion");
-        Depth(root, new Color(0.5f, 0.55f, 0.4f), "ColinasTaladas", 190f);
         SidePath(root, "Agora", 60f, 0f, 9f); SidePath(root, "Ladera", 100f, 4f, -9f); SidePath(root, "Templo", 140f, 9f, 9f);
         Finish(scene, new Vector3(2f, 2f, 0f), "Nivel3_Grecia", true);
     }
@@ -227,7 +224,6 @@ public static class LevelSceneBuilder
         Pickups(root, "Fragmento", 162f, 172f, 3, 8f);
 
         Glyphs(root, new[] { 10f, 30f, 48f, 72f, 96f, 114f, 138f, 166f }, new[] { 4f, 6f, 5f, 6f, 9f, 9f, 8f, 7f }, "TiraBambu");
-        Depth(root, new Color(0.45f, 0.5f, 0.45f), "Montañas", 190f);
         SidePath(root, "Torre", 60f, 0f, -9f); SidePath(root, "Adarve", 100f, 5f, 9f); SidePath(root, "Tramo", 140f, 5f, -9f);
         Finish(scene, new Vector3(2f, 2f, 0f), "Nivel4_China", true);
     }
@@ -267,6 +263,8 @@ public static class LevelSceneBuilder
 
         PlayBounds(freeDepth);
         ApplyKit(name[5] - '0');
+        ApplyElements(name[5] - '0', freeDepth);
+        Backdrop(name[5] - '0', freeDepth);
         ApplyPalette(name[5] - '0');
         CultureDayLook(name[5] - '0', freeDepth ? 8f : 2f);
 
@@ -577,6 +575,10 @@ public static class LevelSceneBuilder
             case "wall": return new Vector3(10f, 5f, 1f);
             case "tower": return new Vector3(5.6f, 8f, 5.6f);
             case "ship": return new Vector3(6f, 1.6f, 2f);
+            case "stairs": return new Vector3(6f, 2f, 2f);
+            case "block": return new Vector3(3f, 3f, 2f);
+            case "mast": return new Vector3(0.5f, 8f, 2f);
+            case "keep": return new Vector3(8f, 12f, 8f);
             default: return new Vector3(4f, 1f, 4f); // platform module (tiled, never stretched)
         }
     }
@@ -587,8 +589,12 @@ public static class LevelSceneBuilder
     static string KitPiece(string blockName)
     {
         if (blockName.StartsWith("Columna_")) return "column";
-        if (blockName.StartsWith("Muro") || blockName.StartsWith("Bloque") || blockName.StartsWith("Mastil")) return "wall";
-        if (blockName.StartsWith("Torre_") && !blockName.StartsWith("Torre_Estandarte")) return "tower";
+        if (blockName.StartsWith("Terraza")) return "stairs";
+        if (blockName.StartsWith("Bloque")) return "block";
+        if (blockName.StartsWith("Mastil")) return "mast";
+        if (blockName == "Torre_Estandarte") return "keep";
+        if (blockName.StartsWith("Muro") || blockName.StartsWith("Ladera_")) return "wall";
+        if (blockName.StartsWith("Torre_")) return "tower";
         if (blockName.StartsWith("Barco")) return "ship";
         return "platform";
     }
@@ -690,6 +696,17 @@ public static class LevelSceneBuilder
                         Place(prefab, block, material, scale, block.position + block.rotation * Vector3.Scale(local, size));
                     }
             }
+            else if (piece == "wall" && size.x > nominal.x * 1.5f)
+            {
+                // Long walls (level 4 hillsides): 10 m pieces side by side, so merlons and pilasters keep their rhythm.
+                int nx = Mathf.RoundToInt(size.x / nominal.x);
+                var scale = new Vector3(size.x / (nx * nominal.x), size.y / nominal.y, size.z / nominal.z);
+                for (int ix = 0; ix < nx; ix++)
+                {
+                    var local = new Vector3((ix + 0.5f) / nx - 0.5f, -0.5f, 0f);
+                    Place(prefab, block, material, scale, block.position + block.rotation * Vector3.Scale(local, size));
+                }
+            }
             else
             {
                 var scale = piece == "ship" ? Vector3.one * (size.x / nominal.x) : new Vector3(size.x / nominal.x, size.y / nominal.y, size.z / nominal.z);
@@ -697,6 +714,127 @@ public static class LevelSceneBuilder
                 Place(prefab, block, material, scale, block.position - block.rotation * new Vector3(0f, size.y / 2f, 0f));
             }
             block.GetComponent<MeshRenderer>().enabled = false;
+        }
+    }
+
+    // ---- Gameplay elements (ODD T18): the primitive keeps its collider, tag and behaviour; a culture model rendered as
+    // its child fills the same box (so it moves with obstacles and hides with collected pickups) ----
+    static string ElementArt(GameObject go)
+    {
+        switch (go.tag)
+        {
+            case "Fragmento": return "crystal";
+            case "Propulsor": return "ring";
+            case "Glifo": return "tablet";
+            case "Checkpoint": return "checkpoint";
+        }
+        if (go.name.StartsWith("Estaca_")) return "stake";
+        if (go.name.StartsWith("Antorcha_")) return "torch";
+        if (go.name.StartsWith("ColumnaCaida_")) return "drum";
+        if (go.name.StartsWith("Tronco_")) return "log";
+        if (go.name.StartsWith("Carreta_")) return "cart";
+        return null;
+    }
+
+    // Size each element is modelled at (Unity axes), see .claude/skills/unit404-niveles-blender/scripts/elements.py NOMINAL.
+    static Vector3 ElementSize(string art) => art switch
+    {
+        "crystal" => new Vector3(0.6f, 0.6f, 0.6f),
+        "ring" => new Vector3(2.5f, 0.3f, 2.5f),
+        "tablet" => new Vector3(0.7f, 1f, 0.2f),
+        "checkpoint" => new Vector3(1f, 4f, 1f),
+        "torch" => new Vector3(0.6f, 1.2f, 0.6f),
+        "stake" => new Vector3(0.6f, 2f, 0.6f),
+        "cart" => new Vector3(2f, 1.5f, 8f / 3f),
+        _ => new Vector3(1f, 2f, 1f), // log, drum: a unit cylinder
+    };
+
+    static void ApplyElements(int level, bool freeDepth)
+    {
+        string culture = Cultures[level - 1], prefix = culture.ToLowerInvariant();
+        ColorUtility.TryParseHtmlString(Unit404.Integrante4.Core.CulturePalette.AccentHex(level), out Color accent);
+        var targets = GameObject.Find("Nivel").GetComponentsInChildren<MeshRenderer>()
+            .Select(r => r.gameObject).Where(g => ElementArt(g) != null).ToArray();
+        foreach (var go in targets)
+        {
+            string art = ElementArt(go);
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ArtFolder + culture + "/" + prefix + "_" + art + ".fbx");
+            if (prefab == null) { Debug.LogWarning("Element art missing: " + prefix + "_" + art); continue; }
+            var kit = (GameObject)PrefabUtility.InstantiatePrefab(prefab, go.transform);
+            kit.name = "Kit_" + go.name;
+            kit.transform.localPosition = Vector3.zero;
+            kit.transform.localRotation = Quaternion.identity;
+            // unit primitive (cylinder = 1 x 2 x 1) / modelled size: the model then takes the primitive's world box
+            Vector3 unit = go.GetComponent<MeshFilter>().sharedMesh.name == "Cylinder" ? new Vector3(1f, 2f, 1f) : Vector3.one, size = ElementSize(art);
+            kit.transform.localScale = new Vector3(unit.x / size.x, unit.y / size.y, unit.z / size.z);
+            Skin(kit, go.layer, KitMaterial(culture, prefix + "_" + art, accent));
+            go.GetComponent<MeshRenderer>().enabled = false;
+        }
+
+        // Pollution hazards (incense, dust storm): translucent haze instead of a solid primitive.
+        foreach (var hazard in GameObject.FindGameObjectsWithTag("Contaminacion"))
+        {
+            var r = hazard.GetComponent<Renderer>();
+            if (r == null) continue;
+            Color c = r.sharedMaterial.color;
+            r.sharedMaterial = HazeMaterial(new Color(c.r, c.g, c.b, 0.28f));
+            r.shadowCastingMode = ShadowCastingMode.Off;
+        }
+
+        // Portal gate over the arrival pad: decoration only, spans the path (X in 2.5D, Z in the 3D worlds).
+        var pad = GameObject.Find("PortalLlegada");
+        var archPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(ArtFolder + culture + "/" + prefix + "_arch.fbx");
+        if (pad == null || archPrefab == null) { Debug.LogWarning("Portal arch missing: " + prefix + "_arch"); return; }
+        var arch = (GameObject)PrefabUtility.InstantiatePrefab(archPrefab, pad.transform.parent);
+        arch.name = "PortalArco";
+        arch.transform.position = pad.transform.position - Vector3.up * pad.transform.localScale.y / 2f;
+        arch.transform.rotation = freeDepth ? Quaternion.Euler(0f, 90f, 0f) : Quaternion.identity;
+        Skin(arch, 0, KitMaterial(culture, prefix + "_arch", accent));
+    }
+
+    // ---- Backdrops (ODD S17, T19): three modelled depth layers per culture, tiled along the level outside the play
+    // area; behind the 2.5D path, on both sides of the 3D worlds. No colliders (FBX import adds none). ----
+    static readonly string[] BackdropLayers = { "near", "mid", "far" };
+    static readonly float[] BackdropGap = { 4f, 18f, 42f }, BackdropDrop = { 1.5f, 3f, 5f }, BackdropScale = { 1f, 1.6f, 2.6f };
+    const float BackdropSegment = 60f; // strip length in backdrops.py
+
+    static void Backdrop(int level, bool freeDepth)
+    {
+        string culture = Cultures[level - 1], prefix = culture.ToLowerInvariant();
+        var root = new GameObject("Paisaje").transform;
+        float edge = GameObject.Find("Limites_Derecha").GetComponent<Collider>().bounds.max.z;
+        float x0 = levelBounds.min.x - 30f, x1 = levelBounds.max.x + 30f;
+        foreach (int side in freeDepth ? new[] { 1, -1 } : new[] { 1 })
+            for (int i = 0; i < BackdropLayers.Length; i++)
+            {
+                string mesh = prefix + "_bg_" + BackdropLayers[i];
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ArtFolder + culture + "/" + mesh + ".fbx");
+                if (prefab == null) { Debug.LogWarning("Backdrop missing: " + mesh); continue; }
+                var material = KitMaterial(culture, mesh, Color.gray);
+                float s = BackdropScale[i], seg = BackdropSegment * s, z = side * (edge + BackdropGap[i]);
+                int k = 0;
+                for (float x = x0 + seg / 2f; x - seg / 2f < x1; x += seg)
+                {
+                    var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab, root);
+                    go.name = "Paisaje_" + BackdropLayers[i] + "_" + (side > 0 ? "D" : "I") + "_" + (++k);
+                    go.transform.localScale = Vector3.one * s;
+                    go.transform.position = new Vector3(x, -BackdropDrop[i], z);
+                    go.transform.rotation = side > 0 ? Quaternion.identity : Quaternion.Euler(0f, 180f, 0f);
+                    // the strip's front edge sits on its origin: turn it round if the scenery would face into the path
+                    if (side * (go.GetComponent<Renderer>().bounds.center.z - z) < 0f) go.transform.rotation *= Quaternion.Euler(0f, 180f, 0f);
+                    Skin(go, 0, material);
+                }
+            }
+    }
+
+    static void Skin(GameObject kit, int layer, Material material)
+    {
+        foreach (var t in kit.GetComponentsInChildren<Transform>()) t.gameObject.layer = layer;
+        foreach (var kr in kit.GetComponentsInChildren<Renderer>())
+        {
+            var mats = kr.sharedMaterials;
+            for (int i = 0; i < mats.Length; i++) mats[i] = material;
+            kr.sharedMaterials = mats;
         }
     }
 
@@ -732,6 +870,22 @@ public static class LevelSceneBuilder
             return;
         }
         go.tag = tag;
+    }
+
+    // URP Lit, transparent alpha blend, no depth write.
+    static Material HazeMaterial(Color c)
+    {
+        var m = Mat(c);
+        m.SetFloat("_Surface", 1f);
+        m.SetFloat("_Blend", 0f);
+        m.SetOverrideTag("RenderType", "Transparent");
+        m.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
+        m.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
+        m.SetInt("_ZWrite", 0);
+        m.SetFloat("_Smoothness", 0f);
+        m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        m.renderQueue = (int)RenderQueue.Transparent;
+        return m;
     }
 
     static Material Mat(Color c)
@@ -876,13 +1030,4 @@ public static class LevelSceneBuilder
         }
     }
 
-    // Decorative depth layers at Z > 0 (no collider, no gameplay tag).
-    static void Depth(Transform p, Color color, string name, float length)
-    {
-        for (int i = 0; i < 3; i++)
-        {
-            var go = Make(p, "Fondo_" + name + "_" + (i + 1), PrimitiveType.Cube, new Vector3(length / 2f, 3f + i * 2f, 12f + i * 10f), new Vector3(length * 1.2f, 6f + i * 3f, 1f), Color.Lerp(color, Color.gray, i * 0.25f), "Default");
-            Object.DestroyImmediate(go.GetComponent<Collider>());
-        }
-    }
 }
