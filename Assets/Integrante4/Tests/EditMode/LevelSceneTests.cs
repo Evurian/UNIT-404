@@ -275,34 +275,81 @@ namespace Unit404.Integrante4.Tests
             foreach (var f in floors) Assert.GreaterOrEqual(f.localScale.z, 8f, f.name + " path depth");
         }
 
-        [TestCase("Nivel1_Mesopotamia")]
-        [TestCase("Nivel2_Egipto")]
-        [TestCase("Nivel3_Grecia")]
-        [TestCase("Nivel4_China")]
-        public void BossArena_UsesTheApophisBasaltGround(string sceneName)
+        // ODD S23 (b, c) / T23: only the boss arena is dark. Mesopotamia keeps the teammate's red basalt (`arena` kit),
+        // Egipto, Grecia and China use their own dark stone there; the route uses the lit culture material.
+        [TestCase("Nivel1_Mesopotamia", "mesopotamia", "arena_platform")]
+        [TestCase("Nivel2_Egipto", "egipto", "egipto_arena_platform")]
+        [TestCase("Nivel3_Grecia", "grecia", "grecia_arena_platform")]
+        [TestCase("Nivel4_China", "china", "china_arena_platform")]
+        public void BossArena_UsesTheCultureDarkGround_RouteUsesTheDayMaterial(string sceneName, string culture, string arenaMaterial)
         {
             Open(sceneName);
-            var arena = Object.FindObjectsByType<MeshFilter>(FindObjectsSortMode.None)
-                .Where(m => m.sharedMesh != null && m.gameObject.name.StartsWith("Kit_") && m.sharedMesh.name == "arena_platform").ToArray();
+            var modules = Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None)
+                .Where(r => r.gameObject.name.StartsWith("Kit_") && r.GetComponent<MeshFilter>().sharedMesh.name.EndsWith("_platform")).ToArray();
+            var arena = modules.Where(r => r.sharedMaterial.name == arenaMaterial).ToArray();
             Assert.Greater(arena.Length, 0, "arena modules");
-            foreach (var m in arena) Assert.That(m.transform.position.x, Is.InRange(120f, 160f), m.name + " inside zone 4");
+            foreach (var r in arena)
+            {
+                Assert.That(r.transform.position.x, Is.InRange(120f, 160f), r.name + " inside zone 4");
+                Assert.IsTrue(r.sharedMaterial.IsKeywordEnabled("_EMISSION"), r.name + " glowing cracks");
+            }
+            var route = modules.Where(r => r.transform.position.x < 120f || r.transform.position.x > 160f).ToArray();
+            Assert.Greater(route.Length, 0, "route modules");
+            foreach (var r in route)
+            {
+                Assert.AreEqual(culture + "_platform", r.sharedMaterial.name, r.name + " day material");
+                Assert.IsFalse(r.sharedMaterial.IsKeywordEnabled("_EMISSION"), r.name + " no glowing cracks on the route");
+            }
         }
 
-        [TestCase("Nivel1_Mesopotamia")]
-        [TestCase("Nivel2_Egipto")]
-        [TestCase("Nivel3_Grecia")]
-        [TestCase("Nivel4_China")]
-        public void Level_HasNightLook_FogBloomEmbersAndArenaAmbience(string sceneName)
+        // ODD S23 (a, b, d) / T20: lit culture day on the route; entering the arena switches to the dark look, in the culture accent.
+        [TestCase("Nivel1_Mesopotamia", 1)]
+        [TestCase("Nivel2_Egipto", 2)]
+        [TestCase("Nivel3_Grecia", 3)]
+        [TestCase("Nivel4_China", 4)]
+        public void Level_RouteIsALitDay_ArenaSwitchesToTheDarkAccentLook(string sceneName, int level)
         {
             Open(sceneName);
-            Assert.IsTrue(RenderSettings.fog, "fog");
-            var post = GameObject.Find("PostProceso");
-            Assert.IsNotNull(post, "PostProceso");
-            Assert.IsTrue(post.GetComponents<Component>().Any(c => c.GetType().Name == "Volume"), "global Volume");
-            Assert.IsNotNull(GameObject.Find("Brasas"), "embers");
-            Assert.IsNotNull(GameObject.Find("Luz_Contraluz"), "rim light");
-            Assert.AreEqual(1, CountComponents("ArenaAmbience"));
+            ColorUtility.TryParseHtmlString(Unit404.Integrante4.Core.CulturePalette.AccentHex(level), out Color accent);
+            var sun = GameObject.Find("Luz_Sol").GetComponent<Light>();
+            var dayVolume = GameObject.Find("PostProceso").GetComponents<Component>().First(c => c.GetType().Name == "Volume");
+            var arenaVolume = GameObject.Find("PostProceso_Arena").GetComponents<Component>().First(c => c.GetType().Name == "Volume");
+            float Weight(Component v) => (float)v.GetType().GetField("weight").GetValue(v);
+            Assert.IsNull(GameObject.Find("Brasas"), "no embers along the route");
+
+            // saved state = the route
+            Assert.IsTrue(RenderSettings.fog, "light haze");
+            Assert.Greater(Lum(RenderSettings.fogColor), 0.4f, "route fog is not dark");
+            Assert.Greater(Lum(RenderSettings.ambientLight), 0.25f, "route ambient is not dark");
+            Assert.GreaterOrEqual(sun.intensity, 1f, "sun");
+            Assert.AreEqual(CameraClearFlags.Skybox, Camera.main.clearFlags, "culture sky");
+            Assert.IsNotNull(RenderSettings.skybox, "culture sky material");
+            Assert.AreEqual(1f, Weight(dayVolume), 0.001f, "day post-processing");
+            Assert.AreEqual(0f, Weight(arenaVolume), 0.001f, "arena post-processing off");
+
+            var ambience = Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).Single(m => m.GetType().Name == "ArenaAmbience");
+            var apply = ambience.GetType().GetMethod("Apply");
+            apply.Invoke(ambience, new object[] { Unit404.Integrante4.Core.AmbienceMode.Boss });
+            Assert.Less(Lum(RenderSettings.fogColor), 0.05f, "arena fog is dark");
+            Assert.Less(sun.intensity, 0.5f, "arena key is dim");
+            Assert.AreEqual(CameraClearFlags.SolidColor, Camera.main.clearFlags, "arena sky is dark");
+            Assert.AreEqual(1f, Weight(arenaVolume), 0.001f, "arena post-processing");
+            Assert.AreEqual(0f, Weight(dayVolume), 0.001f, "day post-processing off");
+            var rim = GameObject.Find("Luz_Contraluz").GetComponent<Light>();
+            Assert.AreEqual(accent, rim.color, "arena rim in the culture accent");
+            var embers = GameObject.Find("Brasas_Arena");
+            Assert.IsNotNull(embers, "arena embers active");
+            Color e = embers.GetComponent<ParticleSystem>().main.startColor.color;
+            Assert.AreEqual(accent.r / accent.maxColorComponent, e.r / e.maxColorComponent, 0.02f, "embers in the accent");
+            Assert.AreEqual(accent.g / accent.maxColorComponent, e.g / e.maxColorComponent, 0.02f, "embers in the accent");
+            Assert.AreEqual(accent.b / accent.maxColorComponent, e.b / e.maxColorComponent, 0.02f, "embers in the accent");
+
+            apply.Invoke(ambience, new object[] { Unit404.Integrante4.Core.AmbienceMode.Level });
+            Assert.Greater(Lum(RenderSettings.fogColor), 0.4f, "back to the culture day");
+            Assert.AreEqual(CameraClearFlags.Skybox, Camera.main.clearFlags, "back to the culture sky");
         }
+
+        static float Lum(Color c) => 0.2126f * c.r + 0.7152f * c.g + 0.0722f * c.b;
 
         // ODD S26 / T26: walking up or down a ramp is continuous, no lip at either end (collider).
         [TestCase("Nivel1_Mesopotamia")]

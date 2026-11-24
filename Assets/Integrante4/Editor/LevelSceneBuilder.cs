@@ -268,7 +268,7 @@ public static class LevelSceneBuilder
         PlayBounds(freeDepth);
         ApplyKit(name[5] - '0');
         ApplyPalette(name[5] - '0');
-        NightLook(name[5] - '0', freeDepth ? 8f : 2f);
+        CultureDayLook(name[5] - '0', freeDepth ? 8f : 2f);
 
         var hud = AssetDatabase.LoadAssetAtPath<GameObject>(HudPath);
         if (hud != null) PrefabUtility.InstantiatePrefab(hud);
@@ -358,61 +358,128 @@ public static class LevelSceneBuilder
         go.AddComponent<BoxCollider>().size = max - min;
     }
 
-    // ---- Night look like the teammate's Apophis (ODD S20, S23, T20): dark sky and fog, cool key, accent rim, bloom, embers ----
+    // ---- Ambience (ODD S23, T20, T23): lit culture day on the route, the dark Apophis look only in the boss arena ----
     const string VolumeFolder = "Assets/Integrante4/Art/Volumes";
-    const float LevelLength = 190f;
 
-    static void NightLook(int level, float depth)
+    // Per culture: sky tint, horizon/ground, haze (fog) and sun colour + intensity. Warm, readable daylight of each era.
+    struct DayLook { public Color sky, ground, haze, sun; public float sunIntensity; }
+    static readonly DayLook[] Days =
+    {
+        new DayLook { sky = new Color(0.62f, 0.55f, 0.45f), ground = new Color(0.55f, 0.45f, 0.32f), haze = new Color(0.86f, 0.78f, 0.62f), sun = new Color(1f, 0.88f, 0.7f), sunIntensity = 1.35f },  // Mesopotamia: dusty river plain
+        new DayLook { sky = new Color(0.42f, 0.55f, 0.78f), ground = new Color(0.62f, 0.5f, 0.32f), haze = new Color(0.88f, 0.8f, 0.64f), sun = new Color(1f, 0.9f, 0.72f), sunIntensity = 1.45f },     // Egipto: clear sky, desert sand
+        new DayLook { sky = new Color(0.35f, 0.55f, 0.85f), ground = new Color(0.45f, 0.5f, 0.4f), haze = new Color(0.75f, 0.85f, 0.95f), sun = new Color(1f, 0.97f, 0.9f), sunIntensity = 1.3f },      // Grecia: Mediterranean blue
+        new DayLook { sky = new Color(0.6f, 0.62f, 0.6f), ground = new Color(0.55f, 0.5f, 0.38f), haze = new Color(0.84f, 0.8f, 0.66f), sun = new Color(1f, 0.9f, 0.78f), sunIntensity = 1.2f },       // China: loess haze
+    };
+
+    static void CultureDayLook(int level, float depth)
     {
         ColorUtility.TryParseHtmlString(Unit404.Integrante4.Core.CulturePalette.AccentHex(level), out Color accent);
-        Color sky = Color.Lerp(new Color(0.008f, 0.009f, 0.014f), accent, 0.05f);
+        DayLook day = Days[level - 1];
+        Color darkSky = Color.Lerp(new Color(0.008f, 0.009f, 0.014f), accent, 0.05f);
 
         var cam = Camera.main;
-        cam.clearFlags = CameraClearFlags.SolidColor;
-        cam.backgroundColor = sky;
+        cam.clearFlags = CameraClearFlags.Skybox;
+        cam.backgroundColor = day.haze;
         var camData = cam.GetComponent<UniversalAdditionalCameraData>() ?? cam.gameObject.AddComponent<UniversalAdditionalCameraData>();
         camData.renderPostProcessing = true;
 
-        var keyGo = GameObject.Find("Directional Light");
-        if (keyGo != null)
-        {
-            keyGo.name = "Luz_Luna";
-            var key = keyGo.GetComponent<Light>();
-            key.color = new Color(0.55f, 0.62f, 0.8f);
-            key.intensity = 0.35f;
-            keyGo.transform.rotation = Quaternion.Euler(40f, -30f, 0f);
-        }
+        var sunGo = GameObject.Find("Directional Light");
+        sunGo.name = "Luz_Sol";
+        var sun = sunGo.GetComponent<Light>();
+        sun.color = day.sun;
+        sun.intensity = day.sunIntensity;
+        sun.shadows = LightShadows.Soft;
+        sunGo.transform.rotation = Quaternion.Euler(45f, -35f, 0f);
         var rim = new GameObject("Luz_Contraluz").AddComponent<Light>();
         rim.type = LightType.Directional;
-        rim.color = accent;
-        rim.intensity = 1f;
+        rim.color = new Color(0.7f, 0.8f, 1f);
+        rim.intensity = 0.25f;
         rim.transform.rotation = Quaternion.Euler(18f, 180f, 0f); // from behind the scenery towards the camera
 
+        RenderSettings.sun = sun;
+        RenderSettings.skybox = SkyMaterial(level, day);
         RenderSettings.ambientMode = AmbientMode.Flat;
-        RenderSettings.ambientLight = Color.Lerp(new Color(0.03f, 0.03f, 0.04f), accent, 0.06f);
+        Color ambient = day.haze * 0.55f;
+        ambient.a = 1f;
+        RenderSettings.ambientLight = ambient;
         RenderSettings.fog = true;
         RenderSettings.fogMode = FogMode.ExponentialSquared;
-        RenderSettings.fogColor = sky;
-        RenderSettings.fogDensity = 0.012f;
+        RenderSettings.fogColor = day.haze;
+        RenderSettings.fogDensity = 0.006f;
 
-        var volume = new GameObject("PostProceso").AddComponent<Volume>();
-        volume.isGlobal = true;
-        volume.sharedProfile = NightProfile(level);
+        var dayVolume = new GameObject("PostProceso").AddComponent<Volume>();
+        dayVolume.isGlobal = true;
+        dayVolume.weight = 1f;
+        dayVolume.sharedProfile = DayProfile(level);
+        var arenaVolume = new GameObject("PostProceso_Arena").AddComponent<Volume>();
+        arenaVolume.isGlobal = true;
+        arenaVolume.weight = 0f;
+        arenaVolume.sharedProfile = NightProfile(level);
 
-        Embers("Brasas", new Vector3(LevelLength / 2f, 2f, 0f), new Vector2(LevelLength, depth + 6f), accent, 45f, true);
-        float arenaY = 0f; // top of the arena ground, so the boss embers rise from the floor the player stands on
-        foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
-            if (r.gameObject.name.StartsWith("Kit_") && r.bounds.center.x > ArenaStartX && r.bounds.center.x < ArenaEndX) arenaY = Mathf.Max(arenaY, r.bounds.max.y);
-        var arenaEmbers = Embers("Brasas_Arena", new Vector3((ArenaStartX + ArenaEndX) / 2f, arenaY, 0f), new Vector2(ArenaEndX - ArenaStartX, depth + 6f), new Color(1f, 0.35f, 0.06f), 120f, false);
+        // boss embers rise from the arena floor the player stands on, in the culture accent (T23)
+        float arenaY = SurfaceTop(GameObject.Find("Nivel").transform, (ArenaStartX + ArenaEndX) / 2f);
+        var arenaEmbers = Embers("Brasas_Arena", new Vector3((ArenaStartX + ArenaEndX) / 2f, arenaY, 0f), new Vector2(ArenaEndX - ArenaStartX, depth + 6f), accent, 120f, false);
 
         var ambience = new GameObject("AmbienteArena").AddComponent<ArenaAmbience>();
         ambience.arenaStartX = ArenaStartX;
         ambience.arenaEndX = ArenaEndX;
+        ambience.keyLight = sun;
         ambience.rimLight = rim;
         ambience.sceneCamera = cam;
         ambience.arenaEmbers = arenaEmbers;
-        ambience.levelRim = accent;
-        ambience.levelFog = sky;
+        ambience.dayVolume = dayVolume;
+        ambience.arenaVolume = arenaVolume;
+        ambience.levelKey = sun.color;
+        ambience.levelKeyIntensity = sun.intensity;
+        ambience.levelRim = rim.color;
+        ambience.levelRimIntensity = rim.intensity;
+        ambience.levelAmbient = ambient;
+        ambience.levelFog = day.haze;
+        ambience.levelFogDensity = RenderSettings.fogDensity;
+        ambience.bossRim = accent;
+        ambience.bossFog = darkSky;
+        ambience.bossAmbient = Color.Lerp(new Color(0.03f, 0.03f, 0.04f), accent, 0.06f);
+    }
+
+    static Material SkyMaterial(int level, DayLook day)
+    {
+        if (!AssetDatabase.IsValidFolder(VolumeFolder)) AssetDatabase.CreateFolder("Assets/Integrante4/Art", "Volumes");
+        string path = VolumeFolder + "/Nivel" + level + "_Cielo.mat";
+        var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (mat == null)
+        {
+            mat = new Material(Shader.Find("Skybox/Procedural"));
+            AssetDatabase.CreateAsset(mat, path);
+        }
+        mat.SetColor("_SkyTint", day.sky);
+        mat.SetColor("_GroundColor", day.ground);
+        mat.SetFloat("_AtmosphereThickness", 1.1f);
+        mat.SetFloat("_Exposure", 1.25f);
+        mat.SetFloat("_SunSize", 0.035f);
+        EditorUtility.SetDirty(mat);
+        return mat;
+    }
+
+    // Day grade: neutral tonemapping, gentle bloom for the emissive pickups only, a touch of saturation; no vignette.
+    static VolumeProfile DayProfile(int level)
+    {
+        if (!AssetDatabase.IsValidFolder(VolumeFolder)) AssetDatabase.CreateFolder("Assets/Integrante4/Art", "Volumes");
+        string path = VolumeFolder + "/Nivel" + level + "_Dia.asset";
+        AssetDatabase.DeleteAsset(path);
+        var profile = ScriptableObject.CreateInstance<VolumeProfile>();
+        AssetDatabase.CreateAsset(profile, path);
+        var bloom = profile.Add<Bloom>(true);
+        bloom.threshold.Override(1.1f);
+        bloom.intensity.Override(0.35f);
+        bloom.scatter.Override(0.6f);
+        profile.Add<Tonemapping>(true).mode.Override(TonemappingMode.Neutral);
+        var color = profile.Add<ColorAdjustments>(true);
+        color.postExposure.Override(0.1f);
+        color.contrast.Override(6f);
+        color.saturation.Override(8f);
+        foreach (var c in profile.components) AssetDatabase.AddObjectToAsset(c, profile);
+        EditorUtility.SetDirty(profile);
+        return profile;
     }
 
     static VolumeProfile NightProfile(int level)
@@ -514,7 +581,7 @@ public static class LevelSceneBuilder
         }
     }
 
-    // Zone 4 of every level (x 120-160) is the boss arena: it uses the teammate's Apophis basalt ground (ODD S23).
+    // Zone 4 of every level (x 120-160) is the boss arena: dark ground and ambience (ODD S23).
     public const float ArenaStartX = 120f, ArenaEndX = 160f;
 
     static string KitPiece(string blockName)
@@ -559,6 +626,14 @@ public static class LevelSceneBuilder
             mat.EnableKeyword("_EMISSION");
             mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
         }
+        else
+        {
+            // day maps have no glow: clear what an earlier bake may have left on the material asset
+            mat.SetTexture("_EmissionMap", null);
+            mat.SetColor("_EmissionColor", Color.black);
+            mat.DisableKeyword("_EMISSION");
+            mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.EmissiveIsBlack;
+        }
         EditorUtility.SetDirty(mat);
         return mat;
     }
@@ -591,12 +666,16 @@ public static class LevelSceneBuilder
         foreach (var block in blocks)
         {
             string piece = KitPiece(block.name);
+            // ODD S23 (c): the arena floor is dark; Mesopotamia uses the teammate's red basalt (`arena` kit), the other
+            // cultures their own platform mesh with the dark stone maps baked on the same UVs (<culture>_arena_platform_*).
             bool arena = piece == "platform" && block.position.x > ArenaStartX && block.position.x < ArenaEndX;
-            string folder = arena ? "Arena" : culture;
-            string asset = (arena ? "arena" : prefix) + "_" + piece;
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ArtFolder + folder + "/" + asset + ".fbx");
-            if (prefab == null) { Debug.LogWarning("Kit piece missing: " + asset); continue; }
-            var material = KitMaterial(folder, asset, baseColor * 0.3f);
+            bool basalt = arena && level == 1;
+            string folder = basalt ? "Arena" : culture;
+            string mesh = basalt ? "arena_platform" : prefix + "_" + piece;
+            string maps = arena && !basalt ? prefix + "_arena_platform" : mesh;
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ArtFolder + folder + "/" + mesh + ".fbx");
+            if (prefab == null) { Debug.LogWarning("Kit piece missing: " + mesh); continue; }
+            var material = KitMaterial(folder, maps, baseColor * 0.3f);
 
             Vector3 size = block.localScale, nominal = NominalSize(piece);
             if (piece == "platform")
