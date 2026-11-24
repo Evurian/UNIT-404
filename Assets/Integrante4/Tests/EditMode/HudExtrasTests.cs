@@ -55,5 +55,27 @@ namespace Unit404.Integrante4.Tests
             foreach (string field in new[] { "glyphText", "anomalyFill", "lockOnMarker", "adaText", "minimapPanel" })
                 Assert.IsNotNull(t.GetField(field).GetValue(view), field);
         }
+
+        // ODD S22 / T22: parchment-style HUD (S13): framed 9-slice panels, diamond life cores, labelled bars,
+        // framed minimap and an Ada panel with a portrait slot.
+        [Test]
+        public void HudPrefab_UsesTheParchmentSkin_FramedPanelsLabelledBarsAndAdaPortrait()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Integrante4/Prefabs/HUD.prefab");
+            Assert.IsNotNull(prefab);
+            foreach (string path in new[] { "PanelSuperiorDerecho", "ProgresoGlifos", "Minimapa", "PanelAda", "Ranuras/Ranura1" })
+            {
+                var image = prefab.transform.Find(path).GetComponent<UnityEngine.UI.Image>();
+                Assert.IsNotNull(image.sprite, path + " sprite");
+                Assert.AreEqual(UnityEngine.UI.Image.Type.Sliced, image.type, path + " 9-slice frame");
+                Assert.Greater(image.sprite.border.x, 0f, path + " sprite border");
+            }
+            foreach (var core in prefab.transform.Find("PanelSuperiorDerecho/Nucleos").GetComponentsInChildren<UnityEngine.UI.Image>())
+                Assert.IsNotNull(core.sprite, core.name + " core sprite");
+            Assert.AreEqual("COMBUSTIBLE", prefab.transform.Find("PanelSuperiorDerecho/EtiquetaCombustible").GetComponent<UnityEngine.UI.Text>().text);
+            Assert.AreEqual("ANOMALÍA", prefab.transform.Find("PanelSuperiorDerecho/EtiquetaAnomalia").GetComponent<UnityEngine.UI.Text>().text);
+            Assert.IsNotNull(prefab.transform.Find("PanelAda/RetratoAda"), "Ada portrait slot");
+            Assert.IsNotNull(prefab.transform.Find("Minimapa/Marco"), "minimap frame");
+        }
     }
 }

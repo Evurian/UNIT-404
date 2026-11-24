@@ -114,6 +114,7 @@ public static class FlowSceneBuilder
         RectTransform panel = Rect("PanelPausa", canvas.transform, Vector2.zero, Vector2.zero);
         panel.anchorMin = Vector2.zero; panel.anchorMax = Vector2.one; panel.offsetMin = panel.offsetMax = Vector2.zero;
         panel.gameObject.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.7f);
+        Card(panel, new Vector2(0f, 10f), new Vector2(760f, 640f));
         Label(panel, "Titulo", "Pausa", 90, new Vector2(0f, 220f), new Vector2(800f, 120f), Parchment);
         Button(panel, "BotonReanudar", "Reanudar", new Vector2(0f, 60f), menu.Resume);
         Button(panel, "BotonReiniciar", "Reiniciar nivel", new Vector2(0f, -70f), menu.Restart);
@@ -131,6 +132,7 @@ public static class FlowSceneBuilder
         RectTransform panel = Rect("PanelCaida", canvas.transform, Vector2.zero, Vector2.zero);
         panel.anchorMin = Vector2.zero; panel.anchorMax = Vector2.one; panel.offsetMin = panel.offsetMax = Vector2.zero;
         panel.gameObject.AddComponent<Image>().color = new Color(0.08f, 0.05f, 0.03f, 0.82f);
+        Card(panel, new Vector2(0f, 50f), new Vector2(1080f, 420f));
         Label(panel, "Titulo", "Sistema caído", 90, new Vector2(0f, 140f), new Vector2(1000f, 120f), Parchment);
         Button(panel, "BotonReintentar", "Reintentar desde el punto de control", new Vector2(0f, -40f), screen.Retry);
         foreach (var rt in panel.Find("BotonReintentar").GetComponentsInChildren<RectTransform>()) rt.sizeDelta = new Vector2(900f, 96f);
@@ -184,6 +186,15 @@ public static class FlowSceneBuilder
         rt.gameObject.AddComponent<Image>().color = color;
     }
 
+    // Dark glass card with the parchment double frame (UiSkin.Panel) behind a menu.
+    static void Card(Transform parent, Vector2 pos, Vector2 size)
+    {
+        var img = Rect("Marco", parent, pos, size).gameObject.AddComponent<Image>();
+        img.sprite = UiSkin.Panel;
+        img.type = Image.Type.Sliced;
+        img.raycastTarget = false;
+    }
+
     static Text Label(Transform parent, string name, string text, int size, Vector2 pos, Vector2 box, Color color)
     {
         var t = Rect(name, parent, pos, box).gameObject.AddComponent<Text>();
@@ -196,7 +207,9 @@ public static class FlowSceneBuilder
     {
         RectTransform rt = Rect(name, parent, pos, new Vector2(520f, 96f));
         var img = rt.gameObject.AddComponent<Image>();
-        img.color = Parchment;
+        img.sprite = UiSkin.Sheet; // parchment sheet with an ink frame (ODD T22)
+        img.type = Image.Type.Sliced;
+        img.color = Color.white;
         var button = rt.gameObject.AddComponent<UnityEngine.UI.Button>();
         button.targetGraphic = img;
         UnityEventTools.AddPersistentListener(button.onClick, onClick);

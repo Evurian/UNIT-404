@@ -3,6 +3,7 @@
     "rootNamespace": "Unit404.Integrante4.Tests",
     "references": [
         "Unit404.Integrante4.Core",
+        "UnityEngine.UI",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],
