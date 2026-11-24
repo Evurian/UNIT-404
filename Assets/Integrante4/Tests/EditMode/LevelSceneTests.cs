@@ -242,6 +242,68 @@ namespace Unit404.Integrante4.Tests
             Assert.GreaterOrEqual(portal.transform.localScale.x, 4f, "wide enough to land on");
         }
 
+        [TestCase("Nivel1_Mesopotamia")]
+        [TestCase("Nivel2_Egipto")]
+        [TestCase("Nivel3_Grecia")]
+        [TestCase("Nivel4_China")]
+        public void Platforms_VisibleTopMatchesColliderTop_NoInvisibleLedges(string sceneName)
+        {
+            Open(sceneName);
+            var modules = Object.FindObjectsByType<MeshFilter>(FindObjectsSortMode.None)
+                .Where(m => m.sharedMesh != null && m.gameObject.name.StartsWith("Kit_") && m.sharedMesh.name.EndsWith("_platform")).ToArray();
+            Assert.Greater(modules.Length, 0, "platform modules");
+            foreach (var group in modules.GroupBy(m => m.gameObject.name))
+            {
+                var host = group.First().transform.parent.Find(group.Key.Substring("Kit_".Length));
+                if (host.rotation != Quaternion.identity) continue; // ramps
+                Bounds col = host.GetComponent<Collider>().bounds;
+                float top = group.Max(m => m.GetComponent<Renderer>().bounds.max.y);
+                float minX = group.Min(m => m.GetComponent<Renderer>().bounds.min.x), maxX = group.Max(m => m.GetComponent<Renderer>().bounds.max.x);
+                Assert.AreEqual(col.max.y, top, 0.05f, host.name + " visible top vs collider top");
+                Assert.LessOrEqual(minX, col.min.x + 0.05f, host.name + " left edge covered");
+                Assert.GreaterOrEqual(maxX, col.max.x - 0.05f, host.name + " right edge covered");
+            }
+        }
+
+        [TestCase("Nivel3_Grecia")]
+        [TestCase("Nivel4_China")]
+        public void Level3And4_MainPathIsEightMetresWide(string sceneName)
+        {
+            Open(sceneName);
+            var floors = Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t => t.name.StartsWith("Suelo_")).ToArray();
+            Assert.Greater(floors.Length, 0);
+            foreach (var f in floors) Assert.GreaterOrEqual(f.localScale.z, 8f, f.name + " path depth");
+        }
+
+        [TestCase("Nivel1_Mesopotamia")]
+        [TestCase("Nivel2_Egipto")]
+        [TestCase("Nivel3_Grecia")]
+        [TestCase("Nivel4_China")]
+        public void BossArena_UsesTheApophisBasaltGround(string sceneName)
+        {
+            Open(sceneName);
+            var arena = Object.FindObjectsByType<MeshFilter>(FindObjectsSortMode.None)
+                .Where(m => m.sharedMesh != null && m.gameObject.name.StartsWith("Kit_") && m.sharedMesh.name == "arena_platform").ToArray();
+            Assert.Greater(arena.Length, 0, "arena modules");
+            foreach (var m in arena) Assert.That(m.transform.position.x, Is.InRange(120f, 160f), m.name + " inside zone 4");
+        }
+
+        [TestCase("Nivel1_Mesopotamia")]
+        [TestCase("Nivel2_Egipto")]
+        [TestCase("Nivel3_Grecia")]
+        [TestCase("Nivel4_China")]
+        public void Level_HasNightLook_FogBloomEmbersAndArenaAmbience(string sceneName)
+        {
+            Open(sceneName);
+            Assert.IsTrue(RenderSettings.fog, "fog");
+            var post = GameObject.Find("PostProceso");
+            Assert.IsNotNull(post, "PostProceso");
+            Assert.IsTrue(post.GetComponents<Component>().Any(c => c.GetType().Name == "Volume"), "global Volume");
+            Assert.IsNotNull(GameObject.Find("Brasas"), "embers");
+            Assert.IsNotNull(GameObject.Find("Luz_Contraluz"), "rim light");
+            Assert.AreEqual(1, CountComponents("ArenaAmbience"));
+        }
+
         static int CountComponents(string typeName)
         {
             return Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).Count(m => m != null && m.GetType().Name == typeName);

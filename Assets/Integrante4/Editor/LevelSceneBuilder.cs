@@ -1,6 +1,8 @@
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 
 // Generates the grey-box scenes of levels 1 and 2 (final art arrives in week 14).
@@ -30,6 +32,7 @@ public static class LevelSceneBuilder
     // ---------------- Level 1: Mesopotamia ----------------
     public static void BuildLevel1()
     {
+        pathDepth = 2f;
         Scene scene = NewLevel("Nivel1_Mesopotamia", new Color(0.78f, 0.62f, 0.38f));
         Transform root = new GameObject("Nivel").transform;
 
@@ -60,13 +63,13 @@ public static class LevelSceneBuilder
         Ring(root, 64f, 6f); Ring(root, 132f, 13f);
 
         // 4. Cima del zigurat (x 120-160): second checkpoint and Tiamat arena
-        Solid(root, "Cima", 140f, 9f, 40f, 2f);
+        Walk(root, "Cima", 140f, 9f, 40f, 2f);
         Tagged(root, "Checkpoint_2", "Checkpoint", PrimitiveType.Cube, new Vector3(124f, 11f, 0f), new Vector3(1f, 4f, 1f), true);
         Tagged(root, "Tiamat", "Jefe", PrimitiveType.Capsule, new Vector3(150f, 12.5f, 0f), new Vector3(3f, 3f, 3f), false);
         Pickups(root, "Fragmento", 126f, 156f, 3, 11.5f);
 
         // 5. Templo superior (x 160-190): arrival portal
-        Solid(root, "Templo", 175f, 9f, 30f, 2f);
+        Walk(root, "Templo", 175f, 9f, 30f, 2f);
         Portal(root, 185f, 10f);
         Pickups(root, "Fragmento", 164f, 182f, 3, 11.5f);
 
@@ -78,6 +81,7 @@ public static class LevelSceneBuilder
     // ---------------- Level 2: Egipto ----------------
     public static void BuildLevel2()
     {
+        pathDepth = 2f;
         Scene scene = NewLevel("Nivel2_Egipto", new Color(0.3f, 0.26f, 0.2f));
         Transform root = new GameObject("Nivel").transform;
 
@@ -103,7 +107,7 @@ public static class LevelSceneBuilder
         Ring(root, 102f, 8f); Ring(root, 62f, 6f); Ring(root, 142f, 6f);
 
         // 4. Camara del Duat (x 120-160): second checkpoint and Apophis arena
-        Solid(root, "CamaraDuat", 140f, -0.5f, 40f, 1f);
+        Walk(root, "CamaraDuat", 140f, -0.5f, 40f, 1f);
         Tagged(root, "Checkpoint_2", "Checkpoint", PrimitiveType.Cube, new Vector3(124f, 2f, 0f), new Vector3(1f, 4f, 1f), true);
         Tagged(root, "Apofis", "Jefe", PrimitiveType.Capsule, new Vector3(150f, 3f, 0f), new Vector3(3f, 3f, 3f), false);
         Pickups(root, "Fragmento", 126f, 156f, 3, 1.5f);
@@ -122,6 +126,7 @@ public static class LevelSceneBuilder
     // ---------------- Level 3: Grecia (3D flight from here on) ----------------
     public static void BuildLevel3()
     {
+        pathDepth = 8f;
         Scene scene = NewLevel("Nivel3_Grecia", new Color(0.55f, 0.72f, 0.85f));
         Transform root = new GameObject("Nivel").transform;
 
@@ -146,14 +151,14 @@ public static class LevelSceneBuilder
         Pickups(root, "Fragmento", 84f, 118f, 3, 6f);
 
         // 4. Templo en ruinas (x 120-160): second checkpoint and Cronos arena
-        Solid(root, "Ruinas", 140f, 9f, 40f, 2f);
+        Walk(root, "Ruinas", 140f, 9f, 40f, 2f);
         Tagged(root, "Checkpoint_2", "Checkpoint", PrimitiveType.Cube, new Vector3(124f, 11f, 0f), new Vector3(1f, 4f, 1f), true);
         Tagged(root, "Cronos", "Jefe", PrimitiveType.Capsule, new Vector3(150f, 12.5f, 0f), new Vector3(3f, 3f, 3f), false);
         Pickups(root, "Fragmento", 126f, 156f, 3, 11.5f);
         Ring(root, 62f, 6f); Ring(root, 110f, 8f); Ring(root, 134f, 14f);
 
         // 5. Altar (x 160-190): arrival portal
-        Solid(root, "Altar", 175f, 9f, 30f, 2f);
+        Walk(root, "Altar", 175f, 9f, 30f, 2f);
         Portal(root, 185f, 10f);
         Pickups(root, "Fragmento", 164f, 182f, 3, 11.5f);
 
@@ -166,6 +171,7 @@ public static class LevelSceneBuilder
     // ---------------- Level 4: China (3D flight) ----------------
     public static void BuildLevel4()
     {
+        pathDepth = 8f;
         Scene scene = NewLevel("Nivel4_China", new Color(0.82f, 0.74f, 0.5f));
         Transform root = new GameObject("Nivel").transform;
 
@@ -185,13 +191,13 @@ public static class LevelSceneBuilder
         Tagged(root, "Checkpoint_1", "Checkpoint", PrimitiveType.Cube, new Vector3(78f, 2f, 0f), new Vector3(1f, 4f, 1f), true);
 
         // 3. Adarve de la muralla (x 80-120): carts and dust storm
-        Solid(root, "Adarve", 100f, 5f, 40f, 2f);
+        Walk(root, "Adarve", 100f, 5f, 40f, 2f);
         for (int i = 0; i < 3; i++) Mover(root, "Carreta_" + (i + 1), "Obstaculo", PrimitiveType.Cube, new Vector3(88f + i * 12f, 7f, 0f), new Vector3(2f, 1.5f, 2f), Vector3.right * 5f, 2.5f);
         Tagged(root, "TormentaPolvo", "Contaminacion", PrimitiveType.Cube, new Vector3(108f, 8f, 0f), new Vector3(8f, 6f, 6f), true, new Color(0.8f, 0.7f, 0.3f));
         Pickups(root, "Fragmento", 84f, 118f, 3, 8f);
 
         // 4. Tramo ancho entre torres (x 120-160): second checkpoint and Chiyou arena
-        Solid(root, "Tramo_Ancho", 140f, 5f, 40f, 2f);
+        Walk(root, "Tramo_Ancho", 140f, 5f, 40f, 2f);
         Tagged(root, "Checkpoint_2", "Checkpoint", PrimitiveType.Cube, new Vector3(124f, 8f, 0f), new Vector3(1f, 4f, 1f), true);
         Tagged(root, "Chiyou", "Jefe", PrimitiveType.Capsule, new Vector3(150f, 8.5f, 0f), new Vector3(3f, 3f, 3f), false);
         Solid(root, "Mastil_1", 130f, 9f, 0.5f, 8f, Wall);
@@ -199,7 +205,7 @@ public static class LevelSceneBuilder
         Ring(root, 60f, 10f); Ring(root, 104f, 10f); Ring(root, 142f, 10f);
 
         // 5. Torre del estandarte (x 160-190): arrival portal
-        Solid(root, "Torre_Estandarte", 180f, 6f, 8f, 12f, Wall);
+        Solid(root, "Torre_Estandarte", 180f, 6f, 8f, 12f, Wall, 0f, pathDepth);
         Portal(root, 180f, 12f);
         Pickups(root, "Fragmento", 162f, 172f, 3, 8f);
 
@@ -244,6 +250,7 @@ public static class LevelSceneBuilder
 
         ApplyKit(name[5] - '0');
         ApplyPalette(name[5] - '0');
+        NightLook(name[5] - '0', freeDepth ? 8f : 2f);
 
         var hud = AssetDatabase.LoadAssetAtPath<GameObject>(HudPath);
         if (hud != null) PrefabUtility.InstantiatePrefab(hud);
@@ -253,6 +260,122 @@ public static class LevelSceneBuilder
         FlowSceneBuilder.AddNarrator(level, level < 4 ? NextLevel[level] : "Despedida");
 
         EditorSceneManager.SaveScene(scene, Folder + name + ".unity");
+    }
+
+    // ---- Night look like the teammate's Apophis (ODD S20, S23, T20): dark sky and fog, cool key, accent rim, bloom, embers ----
+    const string VolumeFolder = "Assets/Integrante4/Art/Volumes";
+    const float LevelLength = 190f;
+
+    static void NightLook(int level, float depth)
+    {
+        ColorUtility.TryParseHtmlString(Unit404.Integrante4.Core.CulturePalette.AccentHex(level), out Color accent);
+        Color sky = Color.Lerp(new Color(0.008f, 0.009f, 0.014f), accent, 0.05f);
+
+        var cam = Camera.main;
+        cam.clearFlags = CameraClearFlags.SolidColor;
+        cam.backgroundColor = sky;
+        var camData = cam.GetComponent<UniversalAdditionalCameraData>() ?? cam.gameObject.AddComponent<UniversalAdditionalCameraData>();
+        camData.renderPostProcessing = true;
+
+        var keyGo = GameObject.Find("Directional Light");
+        if (keyGo != null)
+        {
+            keyGo.name = "Luz_Luna";
+            var key = keyGo.GetComponent<Light>();
+            key.color = new Color(0.55f, 0.62f, 0.8f);
+            key.intensity = 0.35f;
+            keyGo.transform.rotation = Quaternion.Euler(40f, -30f, 0f);
+        }
+        var rim = new GameObject("Luz_Contraluz").AddComponent<Light>();
+        rim.type = LightType.Directional;
+        rim.color = accent;
+        rim.intensity = 1f;
+        rim.transform.rotation = Quaternion.Euler(18f, 180f, 0f); // from behind the scenery towards the camera
+
+        RenderSettings.ambientMode = AmbientMode.Flat;
+        RenderSettings.ambientLight = Color.Lerp(new Color(0.03f, 0.03f, 0.04f), accent, 0.06f);
+        RenderSettings.fog = true;
+        RenderSettings.fogMode = FogMode.ExponentialSquared;
+        RenderSettings.fogColor = sky;
+        RenderSettings.fogDensity = 0.012f;
+
+        var volume = new GameObject("PostProceso").AddComponent<Volume>();
+        volume.isGlobal = true;
+        volume.sharedProfile = NightProfile(level);
+
+        Embers("Brasas", new Vector3(LevelLength / 2f, 2f, 0f), new Vector2(LevelLength, depth + 6f), accent, 45f, true);
+        float arenaY = 0f; // top of the arena ground, so the boss embers rise from the floor the player stands on
+        foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            if (r.gameObject.name.StartsWith("Kit_") && r.bounds.center.x > ArenaStartX && r.bounds.center.x < ArenaEndX) arenaY = Mathf.Max(arenaY, r.bounds.max.y);
+        var arenaEmbers = Embers("Brasas_Arena", new Vector3((ArenaStartX + ArenaEndX) / 2f, arenaY, 0f), new Vector2(ArenaEndX - ArenaStartX, depth + 6f), new Color(1f, 0.35f, 0.06f), 120f, false);
+
+        var ambience = new GameObject("AmbienteArena").AddComponent<ArenaAmbience>();
+        ambience.arenaStartX = ArenaStartX;
+        ambience.arenaEndX = ArenaEndX;
+        ambience.rimLight = rim;
+        ambience.sceneCamera = cam;
+        ambience.arenaEmbers = arenaEmbers;
+        ambience.levelRim = accent;
+        ambience.levelFog = sky;
+    }
+
+    static VolumeProfile NightProfile(int level)
+    {
+        if (!AssetDatabase.IsValidFolder(VolumeFolder)) AssetDatabase.CreateFolder("Assets/Integrante4/Art", "Volumes");
+        string path = VolumeFolder + "/Nivel" + level + "_Noche.asset";
+        AssetDatabase.DeleteAsset(path);
+        var profile = ScriptableObject.CreateInstance<VolumeProfile>();
+        AssetDatabase.CreateAsset(profile, path);
+        var bloom = profile.Add<Bloom>(true);
+        bloom.threshold.Override(0.9f);
+        bloom.intensity.Override(1.4f);
+        bloom.scatter.Override(0.7f);
+        profile.Add<Tonemapping>(true).mode.Override(TonemappingMode.ACES);
+        var vignette = profile.Add<Vignette>(true);
+        vignette.intensity.Override(0.38f);
+        var color = profile.Add<ColorAdjustments>(true);
+        color.postExposure.Override(0.3f);
+        color.contrast.Override(15f);
+        foreach (var c in profile.components) AssetDatabase.AddObjectToAsset(c, profile);
+        EditorUtility.SetDirty(profile);
+        return profile;
+    }
+
+    static GameObject Embers(string name, Vector3 centre, Vector2 area, Color color, float rate, bool active)
+    {
+        var go = new GameObject(name);
+        go.transform.position = centre;
+        go.transform.rotation = Quaternion.Euler(-90f, 0f, 0f); // emit upwards
+        var ps = go.AddComponent<ParticleSystem>();
+        var main = ps.main;
+        main.startLifetime = 7f;
+        main.startSpeed = new ParticleSystem.MinMaxCurve(0.3f, 1f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.04f, 0.1f);
+        main.startColor = color * 3f; // HDR so the bloom makes them glow
+        main.maxParticles = 1500;
+        main.prewarm = true;
+        var emission = ps.emission;
+        emission.rateOverTime = rate;
+        var shape = ps.shape;
+        shape.shapeType = ParticleSystemShapeType.Box;
+        shape.scale = new Vector3(area.x, area.y, 0.5f);
+        var noise = ps.noise;
+        noise.enabled = true;
+        noise.strength = 0.4f;
+        var renderer = go.GetComponent<ParticleSystemRenderer>();
+        renderer.sharedMaterial = EmberMaterial();
+        go.SetActive(active);
+        return go;
+    }
+
+    static Material EmberMaterial()
+    {
+        string path = VolumeFolder + "/Brasa.mat";
+        var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (mat != null) return mat;
+        mat = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? Shader.Find("Particles/Standard Unlit"));
+        AssetDatabase.CreateAsset(mat, path);
+        return mat;
     }
 
     // Culture look (odd/art-style-sheet.md): matte base on untagged scenery, emissive accent on pickups, rings, glyphs, checkpoints and the portal.
@@ -291,15 +414,18 @@ public static class LevelSceneBuilder
             case "wall": return new Vector3(10f, 5f, 1f);
             case "tower": return new Vector3(5.6f, 8f, 5.6f);
             case "ship": return new Vector3(6f, 1.6f, 2f);
-            default: return new Vector3(8f, 1f, 4f); // platform
+            default: return new Vector3(4f, 1f, 4f); // platform module (tiled, never stretched)
         }
     }
+
+    // Zone 4 of every level (x 120-160) is the boss arena: it uses the teammate's Apophis basalt ground (ODD S23).
+    public const float ArenaStartX = 120f, ArenaEndX = 160f;
 
     static string KitPiece(string blockName)
     {
         if (blockName.StartsWith("Columna_")) return "column";
         if (blockName.StartsWith("Muro") || blockName.StartsWith("Bloque") || blockName.StartsWith("Mastil")) return "wall";
-        if (blockName.StartsWith("Torre")) return "tower";
+        if (blockName.StartsWith("Torre_") && !blockName.StartsWith("Torre_Estandarte")) return "tower";
         if (blockName.StartsWith("Barco")) return "ship";
         return "platform";
     }
@@ -310,12 +436,51 @@ public static class LevelSceneBuilder
         return false;
     }
 
+    // Material built from the maps baked in Blender (albedo, tangent normal, emission); flat palette colour if they are missing.
+    static Material KitMaterial(string folder, string piece, Color fallback)
+    {
+        string dir = ArtFolder + folder + "/";
+        string matDir = dir + "Materials";
+        if (!AssetDatabase.IsValidFolder(matDir)) AssetDatabase.CreateFolder(ArtFolder + folder, "Materials");
+        string path = matDir + "/" + piece + ".mat";
+        var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (mat == null)
+        {
+            mat = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
+            AssetDatabase.CreateAsset(mat, path);
+        }
+        var albedo = LoadMap(dir + piece + "_albedo.png", false);
+        var normal = LoadMap(dir + piece + "_normal.png", true);
+        var emission = LoadMap(dir + piece + "_emission.png", false);
+        mat.color = albedo != null ? Color.white : fallback;
+        mat.SetTexture("_BaseMap", albedo);
+        mat.SetFloat("_Smoothness", 0.15f);
+        if (normal != null) { mat.SetTexture("_BumpMap", normal); mat.EnableKeyword("_NORMALMAP"); }
+        if (emission != null)
+        {
+            mat.SetTexture("_EmissionMap", emission);
+            mat.SetColor("_EmissionColor", Color.white * 3f); // HDR: the URP bloom picks the glowing cracks up
+            mat.EnableKeyword("_EMISSION");
+            mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+        }
+        EditorUtility.SetDirty(mat);
+        return mat;
+    }
+
+    static Texture2D LoadMap(string path, bool isNormal)
+    {
+        var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+        if (importer == null) return null;
+        var type = isNormal ? TextureImporterType.NormalMap : TextureImporterType.Default;
+        if (importer.textureType != type) { importer.textureType = type; importer.SaveAndReimport(); }
+        return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+    }
+
     static void ApplyKit(int level)
     {
         string culture = Cultures[level - 1];
         string prefix = culture.ToLowerInvariant();
         ColorUtility.TryParseHtmlString(Unit404.Integrante4.Core.CulturePalette.BaseHex(level), out Color baseColor);
-        Material matte = Mat(baseColor), trim = Mat(baseColor * 0.55f);
         int entorno = Layer("Entorno");
 
         var blocks = new System.Collections.Generic.List<Transform>();
@@ -330,25 +495,49 @@ public static class LevelSceneBuilder
         foreach (var block in blocks)
         {
             string piece = KitPiece(block.name);
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ArtFolder + culture + "/" + prefix + "_" + piece + ".fbx");
-            if (prefab == null) { Debug.LogWarning("Kit piece missing: " + prefix + "_" + piece); continue; }
+            bool arena = piece == "platform" && block.position.x > ArenaStartX && block.position.x < ArenaEndX;
+            string folder = arena ? "Arena" : culture;
+            string asset = (arena ? "arena" : prefix) + "_" + piece;
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ArtFolder + folder + "/" + asset + ".fbx");
+            if (prefab == null) { Debug.LogWarning("Kit piece missing: " + asset); continue; }
+            var material = KitMaterial(folder, asset, baseColor * 0.3f);
 
             Vector3 size = block.localScale, nominal = NominalSize(piece);
-            Vector3 scale = piece == "ship" ? Vector3.one * (size.x / nominal.x) : new Vector3(size.x / nominal.x, size.y / nominal.y, size.z / nominal.z);
-            var kit = (GameObject)PrefabUtility.InstantiatePrefab(prefab, block.parent);
-            kit.name = "Kit_" + block.name;
-            kit.transform.rotation = block.rotation;
-            kit.transform.localScale = scale;
-            // kit pieces have their origin at the centre of their base
-            kit.transform.position = block.position - block.rotation * new Vector3(0f, size.y / 2f, 0f);
-            foreach (var t in kit.GetComponentsInChildren<Transform>()) t.gameObject.layer = block.gameObject.layer;
-            foreach (var kr in kit.GetComponentsInChildren<Renderer>())
+            if (piece == "platform")
             {
-                var mats = kr.sharedMaterials;
-                for (int i = 0; i < mats.Length; i++) mats[i] = mats[i] != null && mats[i].name.EndsWith("_trim") ? trim : matte;
-                kr.sharedMaterials = mats;
+                // Tile 4 m modules so the stone texture keeps its scale; the top slab covers the block footprint exactly (ODD S18).
+                int nx = Mathf.Max(1, Mathf.RoundToInt(size.x / nominal.x)), nz = Mathf.Max(1, Mathf.RoundToInt(size.z / nominal.z));
+                var scale = new Vector3(size.x / (nx * nominal.x), size.y / nominal.y, size.z / (nz * nominal.z));
+                for (int ix = 0; ix < nx; ix++)
+                    for (int iz = 0; iz < nz; iz++)
+                    {
+                        var local = new Vector3((ix + 0.5f) / nx - 0.5f, -0.5f, (iz + 0.5f) / nz - 0.5f);
+                        Place(prefab, block, material, scale, block.position + block.rotation * Vector3.Scale(local, size));
+                    }
+            }
+            else
+            {
+                var scale = piece == "ship" ? Vector3.one * (size.x / nominal.x) : new Vector3(size.x / nominal.x, size.y / nominal.y, size.z / nominal.z);
+                // kit pieces have their origin at the centre of their base
+                Place(prefab, block, material, scale, block.position - block.rotation * new Vector3(0f, size.y / 2f, 0f));
             }
             block.GetComponent<MeshRenderer>().enabled = false;
+        }
+    }
+
+    static void Place(GameObject prefab, Transform block, Material material, Vector3 scale, Vector3 position)
+    {
+        var kit = (GameObject)PrefabUtility.InstantiatePrefab(prefab, block.parent);
+        kit.name = "Kit_" + block.name;
+        kit.transform.rotation = block.rotation;
+        kit.transform.localScale = scale;
+        kit.transform.position = position;
+        foreach (var t in kit.GetComponentsInChildren<Transform>()) t.gameObject.layer = block.gameObject.layer;
+        foreach (var kr in kit.GetComponentsInChildren<Renderer>())
+        {
+            var mats = kr.sharedMaterials;
+            for (int i = 0; i < mats.Length; i++) mats[i] = material;
+            kr.sharedMaterials = mats;
         }
     }
 
@@ -389,8 +578,15 @@ public static class LevelSceneBuilder
         return go;
     }
 
-    static void Solid(Transform p, string name, float x, float y, float w, float h, Color? color = null, float z = 0f)
-        => Make(p, name, PrimitiveType.Cube, new Vector3(x, y, z), new Vector3(w, h, 2f), color ?? Ground, "Entorno");
+    // Depth of the walkable main path: 2 m on the 2.5D levels, 8 m on the 3D worlds of levels 3-4 (ODD S19).
+    static float pathDepth = 2f;
+
+    static void Solid(Transform p, string name, float x, float y, float w, float h, Color? color = null, float z = 0f, float d = 2f)
+        => Make(p, name, PrimitiveType.Cube, new Vector3(x, y, z), new Vector3(w, h, d), color ?? Ground, "Entorno");
+
+    // Walkable surface of the main path (floors, terraces, arenas): uses the level's path depth.
+    static void Walk(Transform p, string name, float x, float y, float w, float h)
+        => Solid(p, name, x, y, w, h, null, 0f, pathDepth);
 
     static void Mover(Transform p, string name, string tag, PrimitiveType type, Vector3 pos, Vector3 scale, Vector3 travel, float speed)
     {
@@ -413,11 +609,11 @@ public static class LevelSceneBuilder
     }
 
     static void Floor(Transform p, string name, float x0, float x1, float y)
-        => Solid(p, name, (x0 + x1) / 2f, y - 0.5f, x1 - x0, 1f);
+        => Walk(p, name, (x0 + x1) / 2f, y - 0.5f, x1 - x0, 1f);
 
     static void Rampa(Transform p, string name, float x, float y, float w, float h)
     {
-        var go = Make(p, name, PrimitiveType.Cube, new Vector3(x, y + h / 2f, 0f), new Vector3(w, 0.5f, 2f), Wall, "Entorno");
+        var go = Make(p, name, PrimitiveType.Cube, new Vector3(x, y + h / 2f, 0f), new Vector3(w, 0.5f, pathDepth), Wall, "Entorno");
         go.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(h, w) * Mathf.Rad2Deg);
     }
 
@@ -452,7 +648,7 @@ public static class LevelSceneBuilder
     // The tall beacon is decorative (no collider) so the goal stays visible from far away.
     static void Portal(Transform p, float x, float floorTopY)
     {
-        Tagged(p, "PortalLlegada", "Plataforma", PrimitiveType.Cube, new Vector3(x, floorTopY + 0.2f, 0f), new Vector3(6f, 0.4f, 2f), false);
+        Tagged(p, "PortalLlegada", "Plataforma", PrimitiveType.Cube, new Vector3(x, floorTopY + 0.2f, 0f), new Vector3(6f, 0.4f, pathDepth), false);
         var beacon = Make(p, "PortalFaro", PrimitiveType.Cube, new Vector3(x, floorTopY + 3.2f, 0f), new Vector3(0.4f, 5.6f, 0.4f), Color.white, "Default");
         Object.DestroyImmediate(beacon.GetComponent<Collider>());
     }
