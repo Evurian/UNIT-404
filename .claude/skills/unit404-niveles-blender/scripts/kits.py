@@ -33,6 +33,7 @@ STYLE = {
 
 BAKE_SIZE = 1024
 BAKE_SAMPLES = 16
+ONLY = []  # piece kinds to rebuild (CLI --only); empty = the whole kit
 
 
 def hex_lin(h):
@@ -463,7 +464,64 @@ def emissive_pickup(name, accent_hex, loc, r=0.3):
     return o
 
 
-KITS = {"platform": platform, "column": column, "wall": wall, "tower": tower, "ship": ship}
+def stairs(name, st, stone, trim, w=6.0, h=2.0, d=2.0):
+    """Ziggurat terrace (T17): battered core, plinth, full-footprint cap (flat walkable top = collider top) and a stair
+    flight in relief on both long faces (the 2.5D camera sees one, the other side is free)."""
+    parts = [box(trim, w, d, 0.25), box(stone, w * 0.96, d * 0.84, h - 0.5, base_z=0.25), box(trim, w, d, 0.25, base_z=h - 0.25)]
+    n, flight, recess = 5, w * 0.3, d * 0.08
+    rise = (h - 0.5) / n
+    for side in (-1, 1):
+        for i in range(n):  # lowest step projects most, every step stays inside the footprint
+            proj = recess * (n - i) / n
+            parts.append(box(trim if i % 2 else stone, flight, proj, rise, 0, side * (d * 0.42 + proj / 2), 0.25 + i * rise))
+        for sx in (-1, 1):  # side balustrades of the flight
+            parts.append(box(trim, 0.18, recess, h - 0.5, sx * (flight / 2 + 0.09), side * (d * 0.46), 0.25))
+    return join(parts, name)
+
+
+def block(name, st, stone, trim, w=3.0, h=3.0, d=2.0):
+    """Dressed stone block (T17): three ashlar courses with shadow gaps, flat cornice on top (= collider top) and a
+    carved relief panel on both faces."""
+    course = (h - 0.5) / 3
+    parts = [box(trim, w, d, 0.2)]
+    for i in range(3):
+        parts.append(box(stone, w * (0.97 - 0.01 * i), d * 0.95, course - 0.04, base_z=0.2 + i * course))
+    parts.append(box(trim, w, d, 0.3, base_z=h - 0.3))
+    for side in (-1, 1):
+        parts.append(box(trim, w * 0.5, 0.04, course * 1.6, 0, side * d * 0.485, 0.2 + course * 0.7))
+    return join(parts, name)
+
+
+def mast(name, st, stone, trim, w=0.5, h=8.0, d=2.0):
+    """Banner mast (T17): stone footing, pole, cross-arm and a banner hanging across the path depth (faces the 3D
+    camera, which looks along +X)."""
+    parts = [box(stone, w, w, 0.6), cone(trim, 0.16, 0.12, h - 0.6, 12, base_z=0.6),
+             box(trim, 0.14, d * 0.95, 0.14, 0, 0, h - 0.9),
+             box(stone, 0.05, d * 0.85, 2.8, 0, 0, h - 3.8)]
+    for i in range(3):  # weighted fringe
+        parts.append(box(trim, 0.07, d * 0.85, 0.12, 0, 0, h - 3.8 + i * 1.1))
+    parts.append(cone(trim, 0.2, 0.0, 0.5, 8, base_z=h - 0.05))
+    return join(parts, name)
+
+
+def keep(name, st, stone, trim, w=8.0, h=12.0, d=8.0):
+    """Banner keep (T17), level 4 goal tower: walkable full-footprint roof deck flush with the collider top (the arrival
+    pad stands on it; nothing rises above it), corner pilasters, banners on every face."""
+    parts = [box(trim, w, d, 0.6), box(stone, w * 0.9, d * 0.9, h - 1.4, base_z=0.6), box(trim, w, d, 0.8, base_z=h - 0.8)]
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            parts.append(box(trim, 0.9, 0.9, h - 1.4, sx * w * 0.43, sy * d * 0.43, 0.6))
+    for axis in (0, 1):
+        for side in (-1, 1):
+            if axis == 0:
+                parts.append(box(trim, 0.05, d * 0.3, h * 0.45, side * w * 0.455, 0, h * 0.35))
+            else:
+                parts.append(box(trim, w * 0.3, 0.05, h * 0.45, 0, side * d * 0.455, h * 0.35))
+    return join(parts, name)
+
+
+KITS = {"platform": platform, "column": column, "wall": wall, "tower": tower, "ship": ship,
+        "stairs": stairs, "block": block, "mast": mast, "keep": keep}
 
 
 # ---------------- bake ----------------
@@ -538,7 +596,10 @@ def build(culture, out, blend_dir, save_blend=True, bake=True, size=BAKE_SIZE):
         if culture != "mesopotamia":
             night = {stone.name: stone_material(culture + "_arena_stone", base, accent, st),
                      trim.name: stone_material(culture + "_arena_trim", base, accent, st, trim=True)}
+        only = set(ONLY) if ONLY else None
         for i, (kind, fn) in enumerate(KITS.items()):
+            if only and kind not in only:
+                continue
             o = fn(f"{culture}_{kind}", st, stone, trim)
             o.location = (i * 12.0, 0.0, 0.0)
             objs.append(o)
@@ -556,11 +617,11 @@ def build(culture, out, blend_dir, save_blend=True, bake=True, size=BAKE_SIZE):
                     for s, m in zip(o.material_slots, day):
                         s.material = m
         export_fbx(o, out)
-    if culture != "arena":
+    if culture != "arena" and not ONLY:
         p = emissive_pickup(f"{culture}_pickup", PALETTE[culture][1], (len(KITS) * 12.0, 0.0, 1.0))
         export_fbx(p, out)
         objs.append(p)
-    if save_blend and blend_dir:
+    if save_blend and blend_dir and not ONLY:
         # .blend must live OUTSIDE Unity's import path (folder ending in ~): Unity would call Blender to import it
         os.makedirs(blend_dir, exist_ok=True)
         bpy.ops.wm.save_as_mainfile(filepath=os.path.join(blend_dir, culture + "_kit.blend"))
@@ -573,4 +634,6 @@ if __name__ == "__main__":
     out = a[a.index("--out") + 1]
     blend_dir = a[a.index("--blend-dir") + 1] if "--blend-dir" in a else ""
     size = int(a[a.index("--size") + 1]) if "--size" in a else BAKE_SIZE
+    # --only stairs,block : rebuild just those pieces (the other FBX/maps stay untouched; the .blend is not saved)
+    ONLY = a[a.index("--only") + 1].split(",") if "--only" in a else []
     print("KIT_OK", build(culture, out, blend_dir, bake="--no-bake" not in a, size=size))

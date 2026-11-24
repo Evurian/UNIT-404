@@ -14,6 +14,11 @@ Look (ODD S23): the route is a lit landscape of the culture (`DAY` materials in 
 2. Generate kit + FBX (headless, no MCP needed):
    `~/Blender/blender-5.2.1-linux-x64/blender -b --python <skill>/scripts/kits.py -- --culture grecia --out Assets/Integrante4/Art/Grecia --blend-dir "Assets/Integrante4/Art/BlenderSource~"`
    Output: one FBX per piece (`<culture>_platform|column|wall|tower|ship|pickup.fbx`), its day maps `<piece>_albedo.png` + `<piece>_normal.png` (no emission), for Egipto/Grecia/China also `<culture>_arena_platform_albedo|normal|emission.png` baked on the same platform UVs, + `Assets/Integrante4/Art/BlenderSource~/<culture>_kit.blend` (the trailing `~` makes Unity ignore the folder) (kept outside `Assets/`: Unity cannot import `.blend` without Blender on PATH).
+   Rebuild only some pieces with `--only stairs,block` (other FBX/maps untouched, the `.blend` is not saved).
+   Level elements (ODD T18) and backdrops (ODD T19) have their own scripts, same arguments:
+   `<blender> -b --python <skill>/scripts/elements.py -- --culture grecia --out Assets/Integrante4/Art/Grecia --blend-dir "Assets/Integrante4/Art/BlenderSource~"`
+   `<blender> -b --python <skill>/scripts/backdrops.py -- --culture grecia --out Assets/Integrante4/Art/Grecia --blend-dir "Assets/Integrante4/Art/BlenderSource~"`
+   Run ONE Blender at a time: several headless bakes in parallel exhaust the laptop's RAM.
 3. With the Blender MCP connected, tune parameters interactively (see `references/parametros.md`), then re-run step 2 so the export stays reproducible.
 4. Verify visually with the MCP (`look` / screenshot) when available; headless runs only prove export, not looks.
 5. In Unity, FBX pieces import at 1 unit = 1 m. Gameplay stays on Z = 0 for levels 1-2; levels 3-4 are semi-open 3D.
@@ -21,6 +26,9 @@ Look (ODD S23): the route is a lit landscape of the culture (`DAY` materials in 
 ## Unity fit (verified in batchmode)
 - Export uses `bake_space_transform=True`: without it the FBX root carries a 270 deg X rotation and Unity pieces lie on their side.
 - Every piece has its origin at the centre of its base. Nominal sizes (width, height, depth): platform 4x1x4 (tiled, never stretched), column 1.4x6x1.4, wall 10x5x1, tower 5.6x8x5.6, ship 6x1.6x2. `LevelSceneBuilder.ApplyKit` scales a piece to its grey block (the block stays as collider, its renderer is disabled).
+- Detailed pieces (T17): stairs 6x2x2 (`Terraza*`), block 3x3x2 (`Bloque*`), mast 0.5x8x2 (`Mastil*`, banner faces +X for the 3D camera), keep 8x12x8 (`Torre_Estandarte`); walkable tops stay flush with the collider top. Long walls (`Ladera_*`) are tiled 10 m pieces.
+- Elements (T18, `elements.py`): crystal, ring, tablet, checkpoint, arch + stake (L1), torch (L2), log/drum (L3), cart (L4). Modelled at the gameplay primitive's size (`NOMINAL`) with the origin at the box CENTRE; `LevelSceneBuilder.ApplyElements` parents them to the primitive with `localScale = primitive unit / nominal`, so they fill the collider, move with obstacles and hide with collected pickups. Maps: albedo, normal, emission (the accent glow). The arch is base-centred decoration next to the arrival pad.
+- Backdrops (T19, `backdrops.py`): `<culture>_bg_near|mid|far`, 60 m strips with the front edge at the origin; `LevelSceneBuilder.Backdrop` tiles them outside `Limites_*` (2.5D behind the path, 3D on both sides). Albedo only.
 - `LevelSceneBuilder.KitMaterial` builds a URP Lit material per map prefix (`Art/<Culture>/Materials/<prefix>.mat`) from the baked PNGs; a missing emission map turns emission off. Arena platforms reuse `<culture>_platform.fbx` with the `<culture>_arena_platform` maps. Silhouettes per culture live in `STYLE` in `kits.py`.
 
 ## Rules
