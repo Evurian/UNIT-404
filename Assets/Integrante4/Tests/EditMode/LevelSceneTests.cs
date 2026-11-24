@@ -329,6 +329,59 @@ namespace Unit404.Integrante4.Tests
             }
         }
 
+        // ODD S25 / T25: six invisible solid bounds keep the robot inside the level even if a bug launches it.
+        [TestCase("Nivel1_Mesopotamia", false)]
+        [TestCase("Nivel2_Egipto", false)]
+        [TestCase("Nivel3_Grecia", true)]
+        [TestCase("Nivel4_China", true)]
+        public void Level_HasSixInvisibleBoundsEnclosingThePlayArea(string sceneName, bool is3D)
+        {
+            Open(sceneName);
+            string[] names = { "Inicio", "Fin", "Izquierda", "Derecha", "Techo", "Suelo" };
+            var b = names.ToDictionary(n => n, n => GameObject.Find("Limites_" + n));
+            foreach (var pair in b)
+            {
+                Assert.IsNotNull(pair.Value, "Limites_" + pair.Key);
+                var box = pair.Value.GetComponent<BoxCollider>();
+                Assert.IsNotNull(box, pair.Key + " collider");
+                Assert.IsFalse(box.isTrigger, pair.Key + " must be solid");
+                Assert.IsNull(pair.Value.GetComponent<Renderer>(), pair.Key + " must be invisible");
+                Assert.AreEqual(LayerMask.NameToLayer("Entorno"), pair.Value.layer, pair.Key + " layer");
+                Assert.IsTrue(pair.Value.CompareTag("Untagged"), pair.Key + " tag");
+            }
+            Bounds C(string n) => b[n].GetComponent<BoxCollider>().bounds;
+            var inner = new Bounds();
+            inner.SetMinMax(new Vector3(C("Inicio").max.x, C("Suelo").max.y, C("Izquierda").max.z), new Vector3(C("Fin").min.x, C("Techo").min.y, C("Derecha").min.z));
+
+            foreach (var c in Object.FindObjectsByType<Collider>(FindObjectsSortMode.None).Where(c => !c.name.StartsWith("Limites_")))
+            {
+                Assert.GreaterOrEqual(c.bounds.min.x, inner.min.x - 0.01f, c.name + " beyond the start");
+                Assert.LessOrEqual(c.bounds.max.x, inner.max.x + 0.01f, c.name + " beyond the end");
+                // 2.5D: the walls hug the path; triggers (ring capsules) and the static boss placeholder may stand into them
+                if (is3D || (!c.isTrigger && !c.CompareTag("Jefe")))
+                {
+                    Assert.GreaterOrEqual(c.bounds.min.z, inner.min.z - 0.01f, c.name + " beyond the near side");
+                    Assert.LessOrEqual(c.bounds.max.z, inner.max.z + 0.01f, c.name + " beyond the far side");
+                }
+                Assert.GreaterOrEqual(c.bounds.min.y, inner.min.y - 0.01f, c.name + " below the floor bound");
+                Assert.LessOrEqual(c.bounds.max.y, inner.max.y + 0.01f, c.name + " above the ceiling");
+            }
+            Assert.IsTrue(inner.Contains(GameObject.Find("PlayerStart").transform.position), "PlayerStart inside");
+
+            float highestWalkable = Solids().Concat(GameObject.FindGameObjectsWithTag("Plataforma").Select(g => g.GetComponent<BoxCollider>())).Max(s => s.bounds.max.y);
+            Assert.AreEqual(highestWalkable + 12f, inner.max.y, 0.05f, "ceiling = highest walkable surface + 12 m");
+            if (!is3D)
+            {
+                Assert.AreEqual(-1f, inner.min.z, 0.01f, "2.5D near wall hugs the 2 m path");
+                Assert.AreEqual(1f, inner.max.z, 0.01f, "2.5D far wall hugs the 2 m path");
+            }
+            else
+            {
+                Assert.LessOrEqual(inner.min.z, -12f, "3D bounds wrap the side paths");
+                Assert.GreaterOrEqual(inner.max.z, 12f, "3D bounds wrap the side paths");
+            }
+        }
+
         // Solid untagged scenery colliders of the level (floors, terraces, ramps, walls), without the play-area bounds.
         static BoxCollider[] Solids()
         {

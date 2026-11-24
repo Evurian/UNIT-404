@@ -248,6 +248,7 @@ public static class LevelSceneBuilder
         }
         player.GetComponent<Renderer>().sharedMaterial = Mat(new Color(0.2f, 0.7f, 0.9f));
 
+        PlayBounds(freeDepth);
         ApplyKit(name[5] - '0');
         ApplyPalette(name[5] - '0');
         NightLook(name[5] - '0', freeDepth ? 8f : 2f);
@@ -260,6 +261,52 @@ public static class LevelSceneBuilder
         FlowSceneBuilder.AddNarrator(level, level < 4 ? NextLevel[level] : "Despedida");
 
         EditorSceneManager.SaveScene(scene, Folder + name + ".unity");
+    }
+
+    // ---- Play-area bounds (ODD S25, T25): six invisible solid boxes around everything the level holds ----
+    const float CeilingClearance = 12f, BoundThickness = 2f;
+    // Gap between the lowest surface and the floor bound: the fall zone (T27) fills it.
+    public const float FallGap = 6f;
+
+    static Bounds levelBounds;
+    static float floorBoundTop;
+
+    static void PlayBounds(bool freeDepth)
+    {
+        Physics.SyncTransforms();
+        var root = GameObject.Find("Nivel").transform;
+        int entorno = Layer("Entorno");
+        bool any = false;
+        float walkTop = float.MinValue;
+        foreach (var c in root.GetComponentsInChildren<Collider>())
+        {
+            if (!any) { levelBounds = c.bounds; any = true; } else levelBounds.Encapsulate(c.bounds);
+            if (!c.isTrigger && c.gameObject.layer == entorno && (c.CompareTag("Untagged") || c.CompareTag("Plataforma")))
+                walkTop = Mathf.Max(walkTop, c.bounds.max.y);
+        }
+        // 2.5D: the side walls hug the 2 m path; 3D: they wrap the main path and the side paths with 1 m to spare.
+        // The 2.5D boss placeholder (3 m capsule, static) may stand into the walls.
+        float zHalf = freeDepth ? Mathf.Max(-levelBounds.min.z, levelBounds.max.z) + 1f : pathDepth / 2f;
+        float x0 = levelBounds.min.x, x1 = levelBounds.max.x, top = walkTop + CeilingClearance;
+        floorBoundTop = levelBounds.min.y - FallGap;
+        float t = BoundThickness;
+
+        var parent = new GameObject("Limites").transform;
+        Bound(parent, "Inicio", new Vector3(x0 - t, floorBoundTop - t, -zHalf - t), new Vector3(x0, top + t, zHalf + t));
+        Bound(parent, "Fin", new Vector3(x1, floorBoundTop - t, -zHalf - t), new Vector3(x1 + t, top + t, zHalf + t));
+        Bound(parent, "Izquierda", new Vector3(x0 - t, floorBoundTop - t, -zHalf - t), new Vector3(x1 + t, top + t, -zHalf));
+        Bound(parent, "Derecha", new Vector3(x0 - t, floorBoundTop - t, zHalf), new Vector3(x1 + t, top + t, zHalf + t));
+        Bound(parent, "Techo", new Vector3(x0 - t, top, -zHalf - t), new Vector3(x1 + t, top + t, zHalf + t));
+        Bound(parent, "Suelo", new Vector3(x0 - t, floorBoundTop - t, -zHalf - t), new Vector3(x1 + t, floorBoundTop, zHalf + t));
+    }
+
+    static void Bound(Transform parent, string name, Vector3 min, Vector3 max)
+    {
+        var go = new GameObject("Limites_" + name);
+        go.transform.SetParent(parent, false);
+        go.transform.position = (min + max) / 2f;
+        go.layer = Layer("Entorno");
+        go.AddComponent<BoxCollider>().size = max - min;
     }
 
     // ---- Night look like the teammate's Apophis (ODD S20, S23, T20): dark sky and fog, cool key, accent rim, bloom, embers ----
