@@ -229,6 +229,19 @@ namespace Unit404.Integrante4.Tests
             Assert.Greater(column.bounds.size.y, column.bounds.size.x * 2f, "column height along Y");
         }
 
+        [TestCase("Nivel1_Mesopotamia")]
+        [TestCase("Nivel2_Egipto")]
+        [TestCase("Nivel3_Grecia")]
+        [TestCase("Nivel4_China")]
+        public void Portal_IsASolidLandingPad(string sceneName)
+        {
+            Open(sceneName);
+            var portal = GameObject.Find("PortalLlegada");
+            Assert.IsFalse(portal.GetComponent<Collider>().isTrigger, "Integrante 1 completes the level in OnCollisionEnter against Plataforma");
+            Assert.LessOrEqual(portal.transform.localScale.y, 0.6f, "flat pad to land on");
+            Assert.GreaterOrEqual(portal.transform.localScale.x, 4f, "wide enough to land on");
+        }
+
         static int CountComponents(string typeName)
         {
             return Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).Count(m => m != null && m.GetType().Name == typeName);

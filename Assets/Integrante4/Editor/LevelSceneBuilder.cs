@@ -67,7 +67,7 @@ public static class LevelSceneBuilder
 
         // 5. Templo superior (x 160-190): arrival portal
         Solid(root, "Templo", 175f, 9f, 30f, 2f);
-        Tagged(root, "PortalLlegada", "Plataforma", PrimitiveType.Cube, new Vector3(185f, 12f, 0f), new Vector3(2f, 4f, 1f), true);
+        Portal(root, 185f, 10f);
         Pickups(root, "Fragmento", 164f, 182f, 3, 11.5f);
 
         Glyphs(root, new[] { 8f, 22f, 46f, 70f, 94f, 112f, 136f, 168f }, new[] { 2f, 8f, 2f, 7f, 10f, 9f, 11.5f, 11.5f });
@@ -111,7 +111,7 @@ public static class LevelSceneBuilder
 
         // 5. Santuario (x 160-190): arrival portal
         Floor(root, "Suelo_Santuario", 160f, 190f, 0f);
-        Tagged(root, "PortalLlegada", "Plataforma", PrimitiveType.Cube, new Vector3(185f, 3f, 0f), new Vector3(2f, 4f, 1f), true);
+        Portal(root, 185f, 0f);
         Pickups(root, "Fragmento", 164f, 182f, 3, 1.5f);
 
         Glyphs(root, new[] { 8f, 22f, 46f, 70f, 94f, 112f, 136f, 168f }, new[] { 2f, 8f, 2f, 7f, 9f, 9f, 2f, 2f });
@@ -154,7 +154,7 @@ public static class LevelSceneBuilder
 
         // 5. Altar (x 160-190): arrival portal
         Solid(root, "Altar", 175f, 9f, 30f, 2f);
-        Tagged(root, "PortalLlegada", "Plataforma", PrimitiveType.Cube, new Vector3(185f, 12f, 0f), new Vector3(2f, 4f, 1f), true);
+        Portal(root, 185f, 10f);
         Pickups(root, "Fragmento", 164f, 182f, 3, 11.5f);
 
         Glyphs(root, new[] { 10f, 26f, 46f, 70f, 94f, 112f, 136f, 168f }, new[] { 3f, 5f, 2f, 7f, 8f, 9f, 11.5f, 11.5f }, "Inscripcion");
@@ -200,7 +200,7 @@ public static class LevelSceneBuilder
 
         // 5. Torre del estandarte (x 160-190): arrival portal
         Solid(root, "Torre_Estandarte", 180f, 6f, 8f, 12f, Wall);
-        Tagged(root, "PortalLlegada", "Plataforma", PrimitiveType.Cube, new Vector3(180f, 13f, 0f), new Vector3(2f, 4f, 1f), true);
+        Portal(root, 180f, 12f);
         Pickups(root, "Fragmento", 162f, 172f, 3, 8f);
 
         Glyphs(root, new[] { 10f, 30f, 48f, 72f, 96f, 114f, 138f, 166f }, new[] { 4f, 6f, 5f, 6f, 9f, 9f, 8f, 7f }, "TiraBambu");
@@ -263,7 +263,7 @@ public static class LevelSceneBuilder
         foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
         {
             string tag = r.gameObject.tag;
-            bool accented = tag == "Fragmento" || tag == "Propulsor" || tag == "Glifo" || tag == "Checkpoint" || r.gameObject.name == "PortalLlegada";
+            bool accented = tag == "Fragmento" || tag == "Propulsor" || tag == "Glifo" || tag == "Checkpoint" || r.gameObject.name == "PortalLlegada" || r.gameObject.name == "PortalFaro";
             if (accented)
             {
                 var m = Mat(accent);
@@ -446,6 +446,15 @@ public static class LevelSceneBuilder
         go.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
         SetTag(go, "Propulsor");
         go.GetComponent<Collider>().isTrigger = true;
+    }
+
+    // Arrival pad: a solid flat Plataforma, because Integrante 1 completes the level in OnCollisionEnter (speed < 3, upright).
+    // The tall beacon is decorative (no collider) so the goal stays visible from far away.
+    static void Portal(Transform p, float x, float floorTopY)
+    {
+        Tagged(p, "PortalLlegada", "Plataforma", PrimitiveType.Cube, new Vector3(x, floorTopY + 0.2f, 0f), new Vector3(6f, 0.4f, 2f), false);
+        var beacon = Make(p, "PortalFaro", PrimitiveType.Cube, new Vector3(x, floorTopY + 3.2f, 0f), new Vector3(0.4f, 5.6f, 0.4f), Color.white, "Default");
+        Object.DestroyImmediate(beacon.GetComponent<Collider>());
     }
 
     static void Guard(Transform p, string name, float x, float y)

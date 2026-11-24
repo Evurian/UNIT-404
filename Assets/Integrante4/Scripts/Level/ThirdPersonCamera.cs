@@ -17,6 +17,7 @@ public class ThirdPersonCamera : MonoBehaviour
 
     void LateUpdate()
     {
+        if (CameraYield.RealCameraPresent(gameObject)) { enabled = false; return; }
         if (target == null)
         {
             GameObject player = GameObject.FindWithTag("Player");
