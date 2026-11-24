@@ -146,8 +146,21 @@ public static class LevelSceneBuilder
 
         // 3. Ladera (x 80-120): rolling rocks and falling columns
         Rampa(root, "Ladera", 100f, 0f, 40f, 10f); // ends level with the Ruinas floor (top 10), no step (ODD S26)
-        for (int i = 0; i < 3; i++) Mover(root, "Roca_" + (i + 1), "Obstaculo", PrimitiveType.Sphere, new Vector3(90f + i * 10f, 2f + i * 1.5f, 0f), Vector3.one * 2f, Vector3.right * 6f, 3f);
-        for (int i = 0; i < 2; i++) Mover(root, "ColumnaCaida_" + (i + 1), "Obstaculo", PrimitiveType.Cylinder, new Vector3(96f + i * 14f, 8f, 0f), new Vector3(1f, 3f, 1f), Vector3.down * 5f, 2f);
+        // Obstacles span the whole 8 m path (ODD S19): logs rolling down the slope and fallen columns dropping across it.
+        float slope = Mathf.Atan2(10f, 40f);
+        Vector3 downhill = new Vector3(-Mathf.Cos(slope), -Mathf.Sin(slope), 0f);
+        for (int i = 0; i < 3; i++)
+        {
+            float lx = 90f + i * 10f;
+            Beam(root, "Tronco_" + (i + 1), new Vector3(lx, RampTop(lx, 100f, 0f, 40f, 10f) + 1f / Mathf.Cos(slope), 0f), 2f, pathDepth, downhill * 6f, 3f);
+        }
+        for (int i = 0; i < 2; i++)
+        {
+            float cx = 96f + i * 14f;
+            Beam(root, "ColumnaCaida_" + (i + 1), new Vector3(cx, RampTop(cx, 100f, 0f, 40f, 10f) + 0.6f / Mathf.Cos(slope) + 5f, 0f), 1.2f, pathDepth, Vector3.down * 5f, 2f);
+        }
+        // The side path next to the slope would skirt the logs: it gets its own (top 4, z -12..-6, x 93-107).
+        Beam(root, "Tronco_Lateral_Ladera", new Vector3(97f, 4.8f, -9f), 1.6f, 6f, Vector3.right * 6f, 3f);
         Wind(root, "BrisaMar", 100f, 6f);
         foreach (float fx in new[] { 84f, 101f, 118f }) Pickups(root, "Fragmento", fx, fx, 1, RampTop(fx, 100f, 0f, 40f, 10f) + 1.5f);
 
@@ -193,7 +206,10 @@ public static class LevelSceneBuilder
 
         // 3. Adarve de la muralla (x 80-120): carts and dust storm
         Walk(root, "Adarve", 100f, 5f, 40f, 2f);
-        for (int i = 0; i < 3; i++) Mover(root, "Carreta_" + (i + 1), "Obstaculo", PrimitiveType.Cube, new Vector3(88f + i * 12f, 7f, 0f), new Vector3(2f, 1.5f, 2f), Vector3.right * 5f, 2.5f);
+        // Rows of carts side by side across the 8 m wall walk (ODD S19), on the walkway (top 6), moving together.
+        for (int i = 0; i < 3; i++) CartRow(root, "Carreta_" + (i + 1), 88f + i * 12f, 6f, -pathDepth / 2f, pathDepth / 2f, 3);
+        // The side path beside the wall walk would skirt the carts: it gets its own row (top 5, z 6..12, x 93-107).
+        CartRow(root, "Carreta_Lateral_Adarve", 98f, 5f, 6f, 12f, 2);
         Tagged(root, "TormentaPolvo", "Contaminacion", PrimitiveType.Cube, new Vector3(108f, 8f, 0f), new Vector3(8f, 6f, 6f), true, new Color(0.8f, 0.7f, 0.3f));
         Pickups(root, "Fragmento", 84f, 118f, 3, 8f);
 
@@ -674,6 +690,21 @@ public static class LevelSceneBuilder
         var mover = go.AddComponent<MovingObstacle>();
         mover.travel = travel;
         mover.speed = speed;
+    }
+
+    // Cylinder lying across the path (axis along Z): a rolling log or a fallen column.
+    static void Beam(Transform p, string name, Vector3 centre, float diameter, float length, Vector3 travel, float speed)
+    {
+        Mover(p, name, "Obstaculo", PrimitiveType.Cylinder, centre, new Vector3(diameter, length / 2f, diameter), travel, speed);
+        GameObject.Find(name).transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+    }
+
+    // Carts placed side by side from z0 to z1 with no gap, standing on a floor whose top is floorTop.
+    static void CartRow(Transform p, string name, float x, float floorTop, float z0, float z1, int count)
+    {
+        float w = (z1 - z0) / count;
+        for (int i = 0; i < count; i++)
+            Mover(p, name + "_" + (char)('A' + i), "Obstaculo", PrimitiveType.Cube, new Vector3(x, floorTop + 0.75f, z0 + w * (i + 0.5f)), new Vector3(2f, 1.5f, w), Vector3.right * 5f, 2.5f);
     }
 
     // Semi-open 3D worlds (levels 3-4): side platforms off the main line, each with fragments.

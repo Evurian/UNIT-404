@@ -416,6 +416,46 @@ namespace Unit404.Integrante4.Tests
             Assert.AreEqual(2, ((Transform[])screen.GetType().GetField("checkpoints").GetValue(screen)).Length, "both checkpoints wired");
         }
 
+        // ODD S19 / T15: on the 8 m path every obstacle row blocks the full width, and a side path next to an
+        // obstacle carries its own row, so nothing can be skirted around.
+        [TestCase("Nivel3_Grecia")]
+        [TestCase("Nivel4_China")]
+        public void Level3And4_ObstacleRowsBlockTheWholePathAndTheSidePaths(string sceneName)
+        {
+            Open(sceneName);
+            var movers = Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).Where(m => m.GetType().Name == "MovingObstacle" && m.CompareTag("Obstaculo")).ToArray();
+            var rows = movers.GroupBy(m => System.Text.RegularExpressions.Regex.Replace(m.name, "_[A-Z]$", "")).Select(g => new
+            {
+                name = g.Key,
+                bounds = g.Select(m => m.GetComponent<Collider>().bounds).ToArray(),
+                minX = g.Min(m => Mathf.Min(m.GetComponent<Collider>().bounds.min.x, m.GetComponent<Collider>().bounds.min.x + ((Vector3)m.GetType().GetField("travel").GetValue(m)).x)),
+                maxX = g.Max(m => Mathf.Max(m.GetComponent<Collider>().bounds.max.x, m.GetComponent<Collider>().bounds.max.x + ((Vector3)m.GetType().GetField("travel").GetValue(m)).x)),
+            }).ToArray();
+            var main = rows.Where(r => Mathf.Abs(r.bounds.Average(b => b.center.z)) < 4f).ToArray();
+            Assert.GreaterOrEqual(main.Length, 3, "obstacle rows on the main path");
+            foreach (var r in main) Assert.IsTrue(Covers(r.bounds, -4f, 4f), r.name + " leaves a free lane in |z| <= 4");
+
+            foreach (var side in Object.FindObjectsByType<BoxCollider>(FindObjectsSortMode.None).Where(b => b.name.StartsWith("SenderoLateral_")))
+            {
+                Bounds s = side.bounds;
+                if (!main.Any(r => r.maxX > s.min.x && r.minX < s.max.x)) continue;
+                Assert.IsTrue(rows.Any(r => r.bounds.All(b => b.center.x > s.min.x && b.center.x < s.max.x) && Covers(r.bounds, s.min.z, s.max.z)),
+                    side.name + " is a bypass: it runs beside an obstacle row without a row of its own");
+            }
+        }
+
+        // True when the z ranges of the boxes, merged, cover [from, to].
+        static bool Covers(Bounds[] boxes, float from, float to)
+        {
+            float reach = from;
+            foreach (var b in boxes.OrderBy(b => b.min.z))
+            {
+                if (b.min.z > reach + 0.05f) break;
+                reach = Mathf.Max(reach, b.max.z);
+            }
+            return reach >= to - 0.05f;
+        }
+
         // Solid untagged scenery colliders of the level (floors, terraces, ramps, walls), without the play-area bounds.
         static BoxCollider[] Solids()
         {
