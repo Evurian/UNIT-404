@@ -304,6 +304,39 @@ namespace Unit404.Integrante4.Tests
             Assert.AreEqual(1, CountComponents("ArenaAmbience"));
         }
 
+        // ODD S26 / T26: walking up or down a ramp is continuous, no lip at either end (collider).
+        [TestCase("Nivel1_Mesopotamia")]
+        [TestCase("Nivel2_Egipto")]
+        [TestCase("Nivel3_Grecia")]
+        [TestCase("Nivel4_China")]
+        public void Ramps_MeetTheFloorsWithoutALip(string sceneName)
+        {
+            Open(sceneName);
+            var solids = Solids();
+            var ramps = solids.Where(b => Mathf.Abs(Mathf.DeltaAngle(b.transform.eulerAngles.z, 0f)) > 0.5f).ToArray();
+            foreach (var ramp in ramps)
+            {
+                Vector3 s = ramp.transform.lossyScale;
+                Vector3 low = ramp.transform.position + ramp.transform.rotation * new Vector3(-s.x / 2f, s.y / 2f, 0f);
+                Vector3 high = ramp.transform.position + ramp.transform.rotation * new Vector3(s.x / 2f, s.y / 2f, 0f);
+                var others = solids.Where(b => b != ramp && b.transform.rotation == Quaternion.identity && b.bounds.min.z < ramp.bounds.max.z && b.bounds.max.z > ramp.bounds.min.z).ToArray();
+                var floor = others.Where(b => b.bounds.min.x <= low.x + 0.05f && b.bounds.max.x >= low.x - 0.05f &&b.bounds.max.y <= low.y + 0.5f).ToArray();
+                Assert.IsNotEmpty(floor, ramp.name + " has no floor at its low end");
+                Assert.AreEqual(floor.Max(b => b.bounds.max.y), low.y, 0.05f, ramp.name + " low end vs floor top");
+                foreach (var end in new[] { low, high })
+                    foreach (var b in others.Where(b => b.bounds.min.x < end.x + 0.3f && b.bounds.max.x > end.x - 0.3f && b.bounds.min.y < end.y + 1f))
+                        Assert.LessOrEqual(b.bounds.max.y, end.y + 0.05f, ramp.name + " blocked by " + b.name + " at x " + end.x.ToString("0.0"));
+            }
+        }
+
+        // Solid untagged scenery colliders of the level (floors, terraces, ramps, walls), without the play-area bounds.
+        static BoxCollider[] Solids()
+        {
+            int entorno = LayerMask.NameToLayer("Entorno");
+            return Object.FindObjectsByType<BoxCollider>(FindObjectsSortMode.None)
+                .Where(b => !b.isTrigger && b.gameObject.layer == entorno && b.CompareTag("Untagged") && !b.name.StartsWith("Limites_")).ToArray();
+        }
+
         static int CountComponents(string typeName)
         {
             return Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).Count(m => m != null && m.GetType().Name == typeName);

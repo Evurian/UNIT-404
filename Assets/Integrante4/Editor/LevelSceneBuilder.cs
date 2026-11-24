@@ -144,18 +144,18 @@ public static class LevelSceneBuilder
         Tagged(root, "Checkpoint_1", "Checkpoint", PrimitiveType.Cube, new Vector3(78f, 2f, 0f), new Vector3(1f, 4f, 1f), true);
 
         // 3. Ladera (x 80-120): rolling rocks and falling columns
-        Rampa(root, "Ladera", 100f, 0f, 40f, 8f);
+        Rampa(root, "Ladera", 100f, 0f, 40f, 10f); // ends level with the Ruinas floor (top 10), no step (ODD S26)
         for (int i = 0; i < 3; i++) Mover(root, "Roca_" + (i + 1), "Obstaculo", PrimitiveType.Sphere, new Vector3(90f + i * 10f, 2f + i * 1.5f, 0f), Vector3.one * 2f, Vector3.right * 6f, 3f);
         for (int i = 0; i < 2; i++) Mover(root, "ColumnaCaida_" + (i + 1), "Obstaculo", PrimitiveType.Cylinder, new Vector3(96f + i * 14f, 8f, 0f), new Vector3(1f, 3f, 1f), Vector3.down * 5f, 2f);
         Wind(root, "BrisaMar", 100f, 6f);
-        Pickups(root, "Fragmento", 84f, 118f, 3, 6f);
+        foreach (float fx in new[] { 84f, 101f, 118f }) Pickups(root, "Fragmento", fx, fx, 1, RampTop(fx, 100f, 0f, 40f, 10f) + 1.5f);
 
         // 4. Templo en ruinas (x 120-160): second checkpoint and Cronos arena
         Walk(root, "Ruinas", 140f, 9f, 40f, 2f);
         Tagged(root, "Checkpoint_2", "Checkpoint", PrimitiveType.Cube, new Vector3(124f, 11f, 0f), new Vector3(1f, 4f, 1f), true);
         Tagged(root, "Cronos", "Jefe", PrimitiveType.Capsule, new Vector3(150f, 12.5f, 0f), new Vector3(3f, 3f, 3f), false);
         Pickups(root, "Fragmento", 126f, 156f, 3, 11.5f);
-        Ring(root, 62f, 6f); Ring(root, 110f, 8f); Ring(root, 134f, 14f);
+        Ring(root, 62f, 6f); Ring(root, 110f, 10.5f); Ring(root, 134f, 14f);
 
         // 5. Altar (x 160-190): arrival portal
         Walk(root, "Altar", 175f, 9f, 30f, 2f);
@@ -611,11 +611,21 @@ public static class LevelSceneBuilder
     static void Floor(Transform p, string name, float x0, float x1, float y)
         => Walk(p, name, (x0 + x1) / 2f, y - 0.5f, x1 - x0, 1f);
 
+    // Ramp from (x - w/2, y) to (x + w/2, y + h) (ODD S26): the slab is as long as the slope and its TOP face lies on that
+    // line, so it meets both floors flush; its thickness hangs below the line, tucked under the floors.
+    const float RampThickness = 0.5f;
+
     static void Rampa(Transform p, string name, float x, float y, float w, float h)
     {
-        var go = Make(p, name, PrimitiveType.Cube, new Vector3(x, y + h / 2f, 0f), new Vector3(w, 0.5f, pathDepth), Wall, "Entorno");
-        go.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(h, w) * Mathf.Rad2Deg);
+        float angle = Mathf.Atan2(h, w);
+        Vector3 normal = new Vector3(-Mathf.Sin(angle), Mathf.Cos(angle), 0f);
+        Vector3 centre = new Vector3(x, y + h / 2f, 0f) - normal * (RampThickness / 2f);
+        var go = Make(p, name, PrimitiveType.Cube, centre, new Vector3(Mathf.Sqrt(w * w + h * h), RampThickness, pathDepth), Wall, "Entorno");
+        go.transform.rotation = Quaternion.Euler(0f, 0f, angle * Mathf.Rad2Deg);
     }
+
+    // Height of the ramp surface at x (for obstacles that roll on it).
+    static float RampTop(float x, float rx, float ry, float w, float h) => ry + (x - (rx - w / 2f)) * h / w;
 
     static GameObject Tagged(Transform p, string name, string tag, PrimitiveType type, Vector3 pos, Vector3 scale, bool trigger, Color? color = null)
     {
