@@ -382,6 +382,40 @@ namespace Unit404.Integrante4.Tests
             }
         }
 
+        // ODD S25 / T27: falling below the level opens "Sistema caído" and respawns at the last checkpoint or the arena door.
+        [TestCase("Nivel1_Mesopotamia")]
+        [TestCase("Nivel2_Egipto")]
+        [TestCase("Nivel3_Grecia")]
+        [TestCase("Nivel4_China")]
+        public void Level_HasFallZoneBelowEverySurfaceAndTheRetryScreen(string sceneName)
+        {
+            Open(sceneName);
+            var zone = GameObject.Find("ZonaCaida");
+            Assert.IsNotNull(zone, "ZonaCaida");
+            var trigger = zone.GetComponent<BoxCollider>();
+            Assert.IsTrue(trigger.isTrigger, "fall zone is a trigger");
+            Assert.AreEqual(1, zone.GetComponents<MonoBehaviour>().Count(m => m.GetType().Name == "FallZone"), "FallZone");
+
+            var solids = Solids();
+            Bounds z = trigger.bounds;
+            Assert.LessOrEqual(z.min.x, solids.Min(s => s.bounds.min.x), "covers the start");
+            Assert.GreaterOrEqual(z.max.x, solids.Max(s => s.bounds.max.x), "covers the end");
+            Assert.LessOrEqual(z.min.z, solids.Min(s => s.bounds.min.z), "covers the near side");
+            Assert.GreaterOrEqual(z.max.z, solids.Max(s => s.bounds.max.z), "covers the far side");
+            Assert.Less(z.max.y, solids.Min(s => s.bounds.min.y), "below the lowest surface");
+            Assert.AreEqual(GameObject.Find("Limites_Suelo").GetComponent<BoxCollider>().bounds.max.y, z.min.y, 0.05f, "reaches down to the floor bound");
+
+            var screen = Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).Single(m => m.GetType().Name == "FallScreen");
+            var panel = (GameObject)screen.GetType().GetField("panel").GetValue(screen);
+            Assert.IsFalse(panel.activeSelf, "hidden until a fall");
+            var texts = panel.GetComponentsInChildren<UnityEngine.UI.Text>(true).Select(t => t.text).ToArray();
+            CollectionAssert.Contains(texts, "Sistema caído");
+            CollectionAssert.Contains(texts, "Reintentar desde el punto de control");
+            var door = (Transform)screen.GetType().GetField("arenaDoor").GetValue(screen);
+            Assert.That(door.position.x, Is.InRange(120f, 160f), "arena door at the start of zone 4");
+            Assert.AreEqual(2, ((Transform[])screen.GetType().GetField("checkpoints").GetValue(screen)).Length, "both checkpoints wired");
+        }
+
         // Solid untagged scenery colliders of the level (floors, terraces, ramps, walls), without the play-area bounds.
         static BoxCollider[] Solids()
         {

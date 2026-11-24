@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -298,6 +299,38 @@ public static class LevelSceneBuilder
         Bound(parent, "Derecha", new Vector3(x0 - t, floorBoundTop - t, zHalf), new Vector3(x1 + t, top + t, zHalf + t));
         Bound(parent, "Techo", new Vector3(x0 - t, top, -zHalf - t), new Vector3(x1 + t, top + t, zHalf + t));
         Bound(parent, "Suelo", new Vector3(x0 - t, floorBoundTop - t, -zHalf - t), new Vector3(x1 + t, floorBoundTop, zHalf + t));
+
+        // Fall zone (T27): fills the gap between the floor bound and just under the lowest surface.
+        var zone = new GameObject("ZonaCaida");
+        zone.transform.SetParent(parent, false);
+        Vector3 zMin = new Vector3(x0, floorBoundTop, -zHalf), zMax = new Vector3(x1, levelBounds.min.y - 0.5f, zHalf);
+        zone.transform.position = (zMin + zMax) / 2f;
+        var trigger = zone.AddComponent<BoxCollider>();
+        trigger.size = zMax - zMin;
+        trigger.isTrigger = true;
+        var fall = zone.AddComponent<FallZone>();
+
+        var screen = FlowSceneBuilder.AddFallScreen();
+        fall.screen = screen;
+        screen.playerStart = GameObject.Find("PlayerStart").transform;
+        screen.checkpoints = GameObject.FindGameObjectsWithTag("Checkpoint").Select(c => c.transform).OrderBy(c => c.position.x).ToArray();
+        screen.arenaStartX = ArenaStartX;
+        screen.arenaEndX = ArenaEndX;
+        var door = new GameObject("PuertaArena").transform;
+        door.SetParent(parent, false);
+        door.position = new Vector3(ArenaStartX + 2f, SurfaceTop(root, ArenaStartX + 2f) + 1f, 0f);
+        screen.arenaDoor = door;
+    }
+
+    // Top of the highest solid scenery under (x, z = 0).
+    static float SurfaceTop(Transform root, float x)
+    {
+        int entorno = Layer("Entorno");
+        float top = 0f;
+        foreach (var c in root.GetComponentsInChildren<Collider>())
+            if (!c.isTrigger && c.gameObject.layer == entorno && c.CompareTag("Untagged") && c.bounds.min.x <= x && c.bounds.max.x >= x && c.bounds.min.z <= 0f && c.bounds.max.z >= 0f && c.bounds.size.y < 4f)
+                top = Mathf.Max(top, c.bounds.max.y);
+        return top;
     }
 
     static void Bound(Transform parent, string name, Vector3 min, Vector3 max)

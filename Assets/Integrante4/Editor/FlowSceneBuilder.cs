@@ -121,6 +121,24 @@ public static class FlowSceneBuilder
         menu.panel = panel.gameObject;
     }
 
+    // "Sistema caído" retry screen (ODD S25, T27); LevelSceneBuilder wires the respawn targets.
+    public static FallScreen AddFallScreen()
+    {
+        EnsureEventSystem();
+        Canvas canvas = NewCanvas("CaidaCanvas", 25);
+        var screen = new GameObject("FallScreen").AddComponent<FallScreen>();
+
+        RectTransform panel = Rect("PanelCaida", canvas.transform, Vector2.zero, Vector2.zero);
+        panel.anchorMin = Vector2.zero; panel.anchorMax = Vector2.one; panel.offsetMin = panel.offsetMax = Vector2.zero;
+        panel.gameObject.AddComponent<Image>().color = new Color(0.08f, 0.05f, 0.03f, 0.82f);
+        Label(panel, "Titulo", "Sistema caído", 90, new Vector2(0f, 140f), new Vector2(1000f, 120f), Parchment);
+        Button(panel, "BotonReintentar", "Reintentar desde el punto de control", new Vector2(0f, -40f), screen.Retry);
+        foreach (var rt in panel.Find("BotonReintentar").GetComponentsInChildren<RectTransform>()) rt.sizeDelta = new Vector2(900f, 96f);
+        screen.panel = panel.gameObject;
+        panel.gameObject.SetActive(false);
+        return screen;
+    }
+
     // ---- UI helpers ----
     static UnityEngine.SceneManagement.Scene NewScene()
     {
