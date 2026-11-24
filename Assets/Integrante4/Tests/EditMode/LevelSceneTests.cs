@@ -201,6 +201,34 @@ namespace Unit404.Integrante4.Tests
             Assert.AreEqual(1, CountComponents("AchievementToast"));
         }
 
+        [TestCase("Nivel1_Mesopotamia", "mesopotamia")]
+        [TestCase("Nivel2_Egipto", "egipto")]
+        [TestCase("Nivel3_Grecia", "grecia")]
+        [TestCase("Nivel4_China", "china")]
+        public void Level_BlocksAreSkinnedWithCultureKitPieces(string sceneName, string culture)
+        {
+            Open(sceneName);
+            var kits = Object.FindObjectsByType<MeshFilter>(FindObjectsSortMode.None)
+                .Where(m => m.sharedMesh != null && m.gameObject.name.StartsWith("Kit_") && m.sharedMesh.name.StartsWith(culture + "_")).ToArray();
+            Assert.GreaterOrEqual(kits.Length, 8, "kit pieces of " + culture);
+            // The grey primitive stays as the collider but no longer renders.
+            foreach (var k in kits)
+            {
+                var host = k.transform.parent.Find(k.gameObject.name.Substring("Kit_".Length));
+                Assert.IsNotNull(host, k.gameObject.name + " host block");
+                Assert.IsNotNull(host.GetComponent<Collider>(), host.name + " keeps its collider");
+                Assert.IsFalse(host.GetComponent<Renderer>().enabled, host.name + " grey renderer off");
+            }
+        }
+
+        [TestCase("Nivel2_Egipto")]
+        public void KitColumns_StandUpright(string sceneName)
+        {
+            Open(sceneName);
+            var column = Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None).First(r => r.gameObject.name.StartsWith("Kit_Columna_1"));
+            Assert.Greater(column.bounds.size.y, column.bounds.size.x * 2f, "column height along Y");
+        }
+
         static int CountComponents(string typeName)
         {
             return Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).Count(m => m != null && m.GetType().Name == typeName);

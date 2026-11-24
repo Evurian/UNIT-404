@@ -242,6 +242,7 @@ public static class LevelSceneBuilder
         }
         player.GetComponent<Renderer>().sharedMaterial = Mat(new Color(0.2f, 0.7f, 0.9f));
 
+        ApplyKit(name[5] - '0');
         ApplyPalette(name[5] - '0');
 
         var hud = AssetDatabase.LoadAssetAtPath<GameObject>(HudPath);
@@ -270,10 +271,84 @@ public static class LevelSceneBuilder
                 m.SetColor("_EmissionColor", accent * 1.5f);
                 r.sharedMaterial = m;
             }
-            else if (tag == "Untagged" && r.gameObject.layer == Layer("Entorno") && r.gameObject.name != "JugadorTemporal")
+            else if (tag == "Untagged" && r.gameObject.layer == Layer("Entorno") && r.gameObject.name != "JugadorTemporal" && !InKit(r.transform))
             {
                 r.sharedMaterial = Mat(baseColor);
             }
+        }
+    }
+
+    // ---- Blender kit skin (odd T10): the grey block stays as the collider, a culture kit piece renders instead ----
+    const string ArtFolder = "Assets/Integrante4/Art/";
+    static readonly string[] Cultures = { "Mesopotamia", "Egipto", "Grecia", "China" };
+
+    // Nominal size (Unity axes: width, height, depth) of each Blender kit piece, see .claude/skills/unit404-niveles-blender/scripts/kits.py
+    static Vector3 NominalSize(string piece)
+    {
+        switch (piece)
+        {
+            case "column": return new Vector3(1.4f, 6f, 1.4f);
+            case "wall": return new Vector3(10f, 5f, 1f);
+            case "tower": return new Vector3(5.6f, 8f, 5.6f);
+            case "ship": return new Vector3(6f, 1.6f, 2f);
+            default: return new Vector3(8f, 1f, 4f); // platform
+        }
+    }
+
+    static string KitPiece(string blockName)
+    {
+        if (blockName.StartsWith("Columna_")) return "column";
+        if (blockName.StartsWith("Muro") || blockName.StartsWith("Bloque") || blockName.StartsWith("Mastil")) return "wall";
+        if (blockName.StartsWith("Torre")) return "tower";
+        if (blockName.StartsWith("Barco")) return "ship";
+        return "platform";
+    }
+
+    static bool InKit(Transform t)
+    {
+        for (; t != null; t = t.parent) if (t.name.StartsWith("Kit_")) return true;
+        return false;
+    }
+
+    static void ApplyKit(int level)
+    {
+        string culture = Cultures[level - 1];
+        string prefix = culture.ToLowerInvariant();
+        ColorUtility.TryParseHtmlString(Unit404.Integrante4.Core.CulturePalette.BaseHex(level), out Color baseColor);
+        Material matte = Mat(baseColor), trim = Mat(baseColor * 0.55f);
+        int entorno = Layer("Entorno");
+
+        var blocks = new System.Collections.Generic.List<Transform>();
+        foreach (var r in Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
+        {
+            var go = r.gameObject;
+            if (!r.enabled || go.tag != "Untagged" || go.layer != entorno || go.name == "JugadorTemporal") continue;
+            if (go.GetComponent<BoxCollider>() == null || InKit(go.transform)) continue;
+            blocks.Add(go.transform);
+        }
+
+        foreach (var block in blocks)
+        {
+            string piece = KitPiece(block.name);
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ArtFolder + culture + "/" + prefix + "_" + piece + ".fbx");
+            if (prefab == null) { Debug.LogWarning("Kit piece missing: " + prefix + "_" + piece); continue; }
+
+            Vector3 size = block.localScale, nominal = NominalSize(piece);
+            Vector3 scale = piece == "ship" ? Vector3.one * (size.x / nominal.x) : new Vector3(size.x / nominal.x, size.y / nominal.y, size.z / nominal.z);
+            var kit = (GameObject)PrefabUtility.InstantiatePrefab(prefab, block.parent);
+            kit.name = "Kit_" + block.name;
+            kit.transform.rotation = block.rotation;
+            kit.transform.localScale = scale;
+            // kit pieces have their origin at the centre of their base
+            kit.transform.position = block.position - block.rotation * new Vector3(0f, size.y / 2f, 0f);
+            foreach (var t in kit.GetComponentsInChildren<Transform>()) t.gameObject.layer = block.gameObject.layer;
+            foreach (var kr in kit.GetComponentsInChildren<Renderer>())
+            {
+                var mats = kr.sharedMaterials;
+                for (int i = 0; i < mats.Length; i++) mats[i] = mats[i] != null && mats[i].name.EndsWith("_trim") ? trim : matte;
+                kr.sharedMaterials = mats;
+            }
+            block.GetComponent<MeshRenderer>().enabled = false;
         }
     }
 
