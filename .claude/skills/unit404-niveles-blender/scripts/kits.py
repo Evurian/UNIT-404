@@ -11,6 +11,7 @@ Blender units = meters = Unity units. FBX: -Z forward, Y up, bake_space_transfor
 Every piece has its origin at the CENTRE OF ITS BASE. Platforms are 4 x 4 m modules that Unity tiles (no stretching):
 the top slab covers the full footprint, so the visible top equals the collider top (ODD S18)."""
 import bpy, sys, os, math
+import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE = os.path.normpath(os.path.join(HERE, "..", "..", "serpiente-dragon-procedural", "assets", "plantilla_serpiente_dragon.blend"))
@@ -31,7 +32,7 @@ STYLE = {
     "china": dict(dark=0.24, cracks=2.2, blocks=0.65, mask=(0.5, 0.7), shaft_sides=16, capital="bracket", merlons=True, roof=True, sail=True, flutes=0),
 }
 
-BAKE_SIZE = 1024
+BAKE_SIZE = 2048  # T29 (ODD S30): was 1024
 BAKE_SAMPLES = 16
 ONLY = []  # piece kinds to rebuild (CLI --only); empty = the whole kit
 
@@ -292,15 +293,60 @@ def day_material(name, spec):
         bm.inputs[7].default_value = _rgba(band_hex)
         surface = bm.outputs[2]
 
+    # T29 (ODD S30): rounded, worn edges. The Bevel shader normal rounds every hard edge in the baked normal map; where
+    # it departs from the true normal (an edge) the stone is chipped: lighter and rougher.
+    bev = nt.nodes.new("ShaderNodeBevel")
+    bev.samples = 8
+    bev.inputs["Radius"].default_value = 0.035
+    geo = nt.nodes.new("ShaderNodeNewGeometry")
+    dot = nt.nodes.new("ShaderNodeVectorMath"); dot.operation = "DOT_PRODUCT"
+    nt.links.new(bev.outputs["Normal"], dot.inputs[0]); nt.links.new(geo.outputs["Normal"], dot.inputs[1])
+    edge = nt.nodes.new("ShaderNodeMapRange")  # dot 1 = flat face, ~0.9 = on the rounded edge
+    edge.inputs["From Min"].default_value, edge.inputs["From Max"].default_value = 0.995, 0.93
+    nt.links.new(dot.outputs["Value"], edge.inputs["Value"])
+    chip = nt.nodes.new("ShaderNodeTexNoise")  # break the wear up so it reads as chips, not an outline
+    chip.inputs["Scale"].default_value = 9.0
+    chip.inputs["Detail"].default_value = 4.0
+    nt.links.new(coord.outputs["Object"], chip.inputs["Vector"])
+    wear = nt.nodes.new("ShaderNodeMath"); wear.operation = "MULTIPLY"
+    nt.links.new(edge.outputs["Result"], wear.inputs[0]); nt.links.new(chip.outputs["Fac"], wear.inputs[1])
+    wear_c = nt.nodes.new("ShaderNodeMath"); wear_c.operation = "MULTIPLY"; wear_c.inputs[1].default_value = 1.4
+    wear_c.use_clamp = True
+    nt.links.new(wear.outputs[0], wear_c.inputs[0])
+    worn = nt.nodes.new("ShaderNodeMix"); worn.data_type = "RGBA"; worn.blend_type = "SCREEN"
+    nt.links.new(wear_c.outputs[0], worn.inputs[0])
+    nt.links.new(surface, worn.inputs[6])
+    worn.inputs[7].default_value = (0.45, 0.42, 0.38, 1.0)
+    surface = worn.outputs[2]
+
+    # per-pixel roughness: joints/mortar rougher than the faces, worn edges rougher (baked into the albedo alpha as
+    # Unity smoothness)
+    rough = nt.nodes.new("ShaderNodeMapRange")
+    rough.inputs["To Min"].default_value = min(1.0, spec["rough"] + 0.25)
+    rough.inputs["To Max"].default_value = spec["rough"]
+    nt.links.new(height_in, rough.inputs["Value"])
+    rough_w = nt.nodes.new("ShaderNodeMath"); rough_w.operation = "MAXIMUM"
+    nt.links.new(rough.outputs["Result"], rough_w.inputs[0]); nt.links.new(wear_c.outputs[0], rough_w.inputs[1])
+    nt.links.new(rough_w.outputs[0], bsdf.inputs["Roughness"])
+
     nt.links.new(surface, bsdf.inputs["Base Color"])
+    micro = nt.nodes.new("ShaderNodeTexNoise")  # fine pitting: crisp detail at close range
+    micro.inputs["Scale"].default_value = 38.0
+    micro.inputs["Detail"].default_value = 6.0
+    nt.links.new(coord.outputs["Object"], micro.inputs["Vector"])
     height = nt.nodes.new("ShaderNodeMath"); height.operation = "MULTIPLY_ADD"  # grain * 0.25 + inside
     nt.links.new(grain.outputs["Fac"], height.inputs[0])
     height.inputs[1].default_value = 0.25
     nt.links.new(height_in, height.inputs[2])
+    height2 = nt.nodes.new("ShaderNodeMath"); height2.operation = "MULTIPLY_ADD"  # + micro * 0.12
+    nt.links.new(micro.outputs["Fac"], height2.inputs[0])
+    height2.inputs[1].default_value = 0.12
+    nt.links.new(height.outputs["Value"], height2.inputs[2])
     bump = nt.nodes.new("ShaderNodeBump")
-    bump.inputs["Strength"].default_value = spec["bump"]
+    bump.inputs["Strength"].default_value = min(1.0, spec["bump"] * 1.5)
     bump.inputs["Distance"].default_value = 0.04
-    nt.links.new(height.outputs["Value"], bump.inputs["Height"])
+    nt.links.new(height2.outputs["Value"], bump.inputs["Height"])
+    nt.links.new(bev.outputs["Normal"], bump.inputs["Normal"])
     nt.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
     return m
 
@@ -525,7 +571,10 @@ KITS = {"platform": platform, "column": column, "wall": wall, "tower": tower, "s
 
 
 # ---------------- bake ----------------
-MAPS = (("albedo", "DIFFUSE", "sRGB"), ("normal", "NORMAL", "Non-Color"), ("emission", "EMIT", "sRGB"))
+MAPS = (("albedo", "DIFFUSE", "sRGB"), ("normal", "NORMAL", "Non-Color"), ("emission", "EMIT", "sRGB"),
+        ("occlusion", "AO", "Non-Color"), ("roughness", "ROUGHNESS", "Non-Color"))
+AO_IN_ALBEDO = 0.55  # share of the baked AO multiplied into the albedo
+SHARP = ("albedo", "normal", "occlusion", "roughness")  # T29 route maps
 
 
 def bake_maps(o, out, size=BAKE_SIZE, prefix=None, kinds=("albedo", "normal", "emission"), unwrap=True):
@@ -547,8 +596,10 @@ def bake_maps(o, out, size=BAKE_SIZE, prefix=None, kinds=("albedo", "normal", "e
         bpy.ops.mesh.select_all(action="SELECT")
         bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.02)
         bpy.ops.object.mode_set(mode="OBJECT")
+    baked = {}
+    smooth = {"occlusion", "roughness"} <= set(kinds)  # only then the albedo carries an alpha (smoothness)
     for kind, btype, colorspace in (m for m in MAPS if m[0] in kinds):
-        img = bpy.data.images.new(f"{prefix}_{kind}", size, size, alpha=False)
+        img = bpy.data.images.new(f"{prefix}_{kind}", size, size, alpha=(kind == "albedo" and smooth))
         img.colorspace_settings.name = colorspace
         for slot in o.material_slots:
             nt = slot.material.node_tree
@@ -560,6 +611,22 @@ def bake_maps(o, out, size=BAKE_SIZE, prefix=None, kinds=("albedo", "normal", "e
         if btype == "DIFFUSE":
             kw["pass_filter"] = {"COLOR"}
         bpy.ops.object.bake(**kw)
+        baked[kind] = img
+    if "albedo" in baked and "occlusion" in baked and "roughness" in baked:
+        # T29 (ODD S30): AO darkens crevices in the albedo (direct light too, URP's occlusion map only touches
+        # ambient) and the alpha carries smoothness = 1 - roughness (URP Lit "smoothness from albedo alpha")
+        n = size * size * 4
+        alb, ao, ro = (np.empty(n, dtype=np.float32) for _ in range(3))
+        baked["albedo"].pixels.foreach_get(alb)
+        baked["occlusion"].pixels.foreach_get(ao)
+        baked["roughness"].pixels.foreach_get(ro)
+        alb, ao, ro = alb.reshape(-1, 4), ao.reshape(-1, 4), ro.reshape(-1, 4)
+        alb[:, :3] *= (1.0 - AO_IN_ALBEDO + AO_IN_ALBEDO * ao[:, :1])
+        alb[:, 3] = 1.0 - ro[:, 0]
+        baked["albedo"].pixels.foreach_set(alb.ravel())
+    for kind, img in baked.items():
+        if kind == "roughness":
+            continue  # lives in the albedo alpha
         img.filepath_raw = os.path.join(out, f"{prefix}_{kind}.png")
         img.file_format = "PNG"
         img.save()
@@ -608,7 +675,7 @@ def build(culture, out, blend_dir, save_blend=True, bake=True, size=BAKE_SIZE):
             if culture == "arena":
                 bake_maps(o, out, size)
             else:
-                bake_maps(o, out, size, kinds=("albedo", "normal"))
+                bake_maps(o, out, size, kinds=SHARP)
                 if night and o.name.endswith("_platform"):
                     day = [s.material for s in o.material_slots]
                     for s in o.material_slots:
