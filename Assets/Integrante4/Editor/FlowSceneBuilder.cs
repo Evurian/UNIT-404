@@ -120,6 +120,43 @@ public static class FlowSceneBuilder
         narrator.transition = transition;
     }
 
+    // Letterboxed culture transition (ODD S27, T34): title card, Ada's subtitle in the lower band, skip hint, black fade.
+    public static CinematicDirector AddCinematic(int level, string nextScene, Transform[] path, Transform[] lookAt)
+    {
+        ColorUtility.TryParseHtmlString(CulturePalette.AccentHex(level), out Color accent);
+        Canvas canvas = NewCanvas("CinematicaCanvas", 30);
+        var director = new GameObject("CinematicDirector").AddComponent<CinematicDirector>();
+        director.level = level;
+        director.nextScene = nextScene;
+        director.path = path;
+        director.lookAt = lookAt;
+
+        Band(canvas.transform, "BandaSuperior", Color.black, 1f, 120f);
+        Band(canvas.transform, "BandaInferior", Color.black, 0f, 150f);
+
+        RectTransform card = Rect("Titulo", canvas.transform, new Vector2(0f, 60f), new Vector2(1400f, 320f));
+        var group = card.gameObject.AddComponent<CanvasGroup>();
+        group.alpha = 0f;
+        group.blocksRaycasts = false;
+        Label(card, "Nivel", "NIVEL " + level, 40, new Vector2(0f, 90f), new Vector2(1200f, 60f), accent);
+        var culture = Label(card, "Cultura", CulturePalette.CultureName(level).ToUpperInvariant(), 132, new Vector2(0f, -5f), new Vector2(1400f, 160f), Parchment);
+        culture.gameObject.AddComponent<Shadow>().effectDistance = new Vector2(3f, -3f);
+        var line = Rect("Linea", card, new Vector2(0f, -100f), new Vector2(520f, 4f)).gameObject.AddComponent<Image>();
+        line.color = accent;
+        line.raycastTarget = false;
+        director.title = group;
+
+        director.subtitle = Label(canvas.transform, "Subtitulo", "", 36, new Vector2(0f, -465f), new Vector2(1600f, 100f), Parchment);
+        Label(canvas.transform, "Ayuda", "Espacio para saltar", 24, new Vector2(800f, -505f), new Vector2(320f, 40f), new Color(1f, 1f, 1f, 0.45f));
+
+        RectTransform fade = Rect("Fundido", canvas.transform, Vector2.zero, Vector2.zero);
+        fade.anchorMin = Vector2.zero; fade.anchorMax = Vector2.one; fade.offsetMin = fade.offsetMax = Vector2.zero;
+        director.fade = fade.gameObject.AddComponent<Image>();
+        director.fade.color = Color.black;
+        director.fade.raycastTarget = false;
+        return director;
+    }
+
     // Called by LevelSceneBuilder before saving each level scene.
     public static PauseMenu AddPauseMenu()
     {

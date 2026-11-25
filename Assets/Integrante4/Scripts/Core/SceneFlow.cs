@@ -9,11 +9,14 @@ namespace Unit404.Integrante4.Core
         public const string Start = "Inicio";
         public const string Loading = "Carga";
 
-        // Story order; the last scene returns to Start.
+        // Story order; the last scene returns to Start. A culture transition plays before levels 2-4 (T34).
         public static readonly string[] Story =
         {
             Start, "Introduccion",
-            "Nivel1_Mesopotamia", "Nivel2_Egipto", "Nivel3_Grecia", "Nivel4_China",
+            "Nivel1_Mesopotamia",
+            CinematicScript.SceneName(2), "Nivel2_Egipto",
+            CinematicScript.SceneName(3), "Nivel3_Grecia",
+            CinematicScript.SceneName(4), "Nivel4_China",
             "Despedida", "Creditos", "Cierre",
         };
 

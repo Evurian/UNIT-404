@@ -24,6 +24,7 @@ public static class LevelSceneBuilder
         BuildLevel2();
         BuildLevel3();
         BuildLevel4();
+        BuildCinematics();
         FlowSceneBuilder.BuildFlowScenes();
         AssetDatabase.SaveAssets();
     }
@@ -262,6 +263,75 @@ public static class LevelSceneBuilder
         Finish(scene, new Vector3(2f, 2f, 0f), "Nivel4_China", true);
     }
 
+    // ---------------- Culture transitions (ODD S27, T34) ----------------
+    // Each transition is the next level's own scenery with the gameplay removed and a camera flight over it.
+    static string cinematicName;
+    static readonly System.Action[] LevelBuilders = { BuildLevel1, BuildLevel2, BuildLevel3, BuildLevel4 };
+
+    [MenuItem("UNIT-404/Integrante 4/Crear cinematicas de transicion")]
+    public static void BuildCinematics()
+    {
+        for (int level = 2; level <= 4; level++)
+        {
+            cinematicName = Unit404.Integrante4.Core.CinematicScript.SceneName(level);
+            try { LevelBuilders[level - 1](); }
+            finally { cinematicName = null; }
+        }
+    }
+
+    static void StripGameplay()
+    {
+        foreach (string tag in new[] { "Player", "Fragmento", "Propulsor", "Glifo", "Checkpoint", "Observador", "Jefe" })
+            foreach (var go in GameObject.FindGameObjectsWithTag(tag)) Object.DestroyImmediate(go);
+        foreach (var screen in Object.FindObjectsByType<FallScreen>(FindObjectsSortMode.None)) Object.DestroyImmediate(screen.gameObject);
+        foreach (string name in new[] { "PlayerStart", "CaidaCanvas", "Limites" })
+        {
+            var go = GameObject.Find(name);
+            if (go != null) Object.DestroyImmediate(go);
+        }
+        foreach (var follow in Camera.main.GetComponents<MonoBehaviour>())
+            if (follow is SideCameraFollow || follow is ThirdPersonCamera) Object.DestroyImmediate(follow);
+    }
+
+    // Five keys: a high crane shot over the start, three passes along the route, a rise over the portal.
+    // 2.5D levels keep the camera in front of the path looking into the backdrop layers; 3D levels fly above the path.
+    static void AddCinematicFlight(int level, bool freeDepth)
+    {
+        Bounds b = levelBounds;
+        float x0 = b.min.x, x1 = b.max.x, len = x1 - x0, top = b.max.y, mid = (b.min.y + top) / 2f;
+        float camZ = freeDepth ? -9f : -20f, lookZ = freeDepth ? 0f : 8f;
+        Vector3[] cam =
+        {
+            new Vector3(x0 - 25f, top + 22f, camZ * 1.6f),
+            new Vector3(x0 + len * 0.22f, top + 9f, camZ),
+            new Vector3(x0 + len * 0.5f, top + 6f, camZ * 0.9f),
+            new Vector3(x0 + len * 0.75f, top + 9f, camZ),
+            new Vector3(x1 - 10f, top + 13f, camZ * 0.7f),
+        };
+        Vector3[] look =
+        {
+            new Vector3(x0 + 20f, b.min.y, lookZ),
+            new Vector3(x0 + len * 0.22f + 28f, mid, lookZ),
+            new Vector3(x0 + len * 0.5f + 28f, mid, lookZ),
+            new Vector3(x0 + len * 0.75f + 28f, mid, lookZ),
+            new Vector3(x1 + 6f, mid, 0f),
+        };
+        var rig = new GameObject("RutaCamara").transform;
+        Transform[] path = new Transform[cam.Length], targets = new Transform[look.Length];
+        for (int i = 0; i < cam.Length; i++)
+        {
+            path[i] = new GameObject("Clave_" + (i + 1)).transform;
+            path[i].SetParent(rig, false);
+            path[i].position = cam[i];
+            targets[i] = new GameObject("Mira_" + (i + 1)).transform;
+            targets[i].SetParent(rig, false);
+            targets[i].position = look[i];
+        }
+        Camera.main.transform.SetPositionAndRotation(cam[0], Quaternion.LookRotation(look[0] - cam[0]));
+        string next = Unit404.Integrante4.Core.SceneFlow.Next(cinematicName);
+        FlowSceneBuilder.AddCinematic(level, next, path, targets);
+    }
+
     // ---------------- helpers ----------------
     static Scene NewLevel(string name, Color sky)
     {
@@ -303,6 +373,14 @@ public static class LevelSceneBuilder
         Backdrop(name[5] - '0', freeDepth);
         ApplyPalette(name[5] - '0');
         CultureDayLook(name[5] - '0', freeDepth ? 8f : 2f);
+
+        if (cinematicName != null)
+        {
+            StripGameplay();
+            AddCinematicFlight(name[5] - '0', freeDepth);
+            EditorSceneManager.SaveScene(scene, Folder + cinematicName + ".unity");
+            return;
+        }
 
         var hud = AssetDatabase.LoadAssetAtPath<GameObject>(HudPath);
         if (hud != null) PrefabUtility.InstantiatePrefab(hud);

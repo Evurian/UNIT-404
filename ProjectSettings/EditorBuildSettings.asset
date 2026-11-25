@@ -18,11 +18,20 @@ EditorBuildSettings:
     path: Assets/Integrante4/Scenes/Nivel1_Mesopotamia.unity
     guid: 24464316b90e947aab8b8c88768382bd
   - enabled: 1
+    path: Assets/Integrante4/Scenes/Transicion2_Egipto.unity
+    guid: 1127b44a3aaa5ecab909798738ec3d51
+  - enabled: 1
     path: Assets/Integrante4/Scenes/Nivel2_Egipto.unity
     guid: f4cf26b74a455b1ab86e8b56e1a27ec1
   - enabled: 1
+    path: Assets/Integrante4/Scenes/Transicion3_Grecia.unity
+    guid: 32584a3ec76a3fdcc870669a4493400f
+  - enabled: 1
     path: Assets/Integrante4/Scenes/Nivel3_Grecia.unity
     guid: b27bae9da4c9af56d938aa45fe234af0
+  - enabled: 1
+    path: Assets/Integrante4/Scenes/Transicion4_China.unity
+    guid: a7b01594d5d2c24c2b96855d055fc2b1
   - enabled: 1
     path: Assets/Integrante4/Scenes/Nivel4_China.unity
     guid: 7f9e0d87d3b3e89c99aed3972c031906
