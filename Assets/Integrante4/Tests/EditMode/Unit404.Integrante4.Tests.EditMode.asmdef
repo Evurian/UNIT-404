@@ -4,6 +4,7 @@
     "references": [
         "Unit404.Integrante4.Core",
         "UnityEngine.UI",
+        "Unity.TextMeshPro",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

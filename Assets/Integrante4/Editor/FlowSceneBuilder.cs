@@ -1,3 +1,5 @@
+using System.Linq;
+using TMPro;
 using Unit404.Integrante4.Core;
 using UnityEditor;
 using UnityEditor.Events;
@@ -40,18 +42,34 @@ public static class FlowSceneBuilder
         EditorBuildSettings.scenes = scenes.ToArray();
     }
 
+    // ---- Flow screens (ODD S33, T35): level art behind a vignette, Metamorphous titles, parchment buttons ----
+    static readonly Color Amber = new Color32(0xFF, 0x9A, 0x2E, 0xFF);
+    static readonly Color Shade = new Color(0.04f, 0.03f, 0.02f, 0.86f);
+
     public static void BuildStart()
     {
         var scene = NewScene();
         Canvas canvas = NewCanvas("Canvas");
-        Fill(canvas.transform, "Fondo", new Color(0.08f, 0.07f, 0.09f));
+        Backdrop(canvas.transform, "Inicio");
         var menu = new GameObject("StartMenu").AddComponent<StartMenu>();
 
-        Label(canvas.transform, "Titulo", "UNIT-404", 120, new Vector2(0f, 200f), new Vector2(1200f, 180f), Parchment);
-        Label(canvas.transform, "Subtitulo", "El robot que cruzo las eras", 40, new Vector2(0f, 90f), new Vector2(1200f, 60f), Parchment);
-        Button(canvas.transform, "BotonJugar", "Jugar", new Vector2(0f, -60f), menu.Play);
-        Button(canvas.transform, "BotonCreditos", "Creditos", new Vector2(0f, -190f), menu.ShowCredits);
-        Button(canvas.transform, "BotonSalir", "Salir", new Vector2(0f, -320f), menu.Quit);
+        // dark column on the left carries the title and the menu over the art
+        RectTransform column = Rect("Columna", canvas.transform, Vector2.zero, new Vector2(860f, 0f));
+        column.anchorMin = new Vector2(0f, 0f); column.anchorMax = new Vector2(0f, 1f); column.pivot = new Vector2(0f, 0.5f);
+        column.anchoredPosition = Vector2.zero;
+        Plain(column.gameObject, new Color(Shade.r, Shade.g, Shade.b, 0.55f));
+        Plain(Edge(column, "Filo", 1f, 3f).gameObject, new Color(Amber.r, Amber.g, Amber.b, 0.7f));
+
+        Tmp(canvas.transform, "Titulo", "UNIT-404", 132, new Vector2(-520f, 250f), new Vector2(820f, 200f), Parchment, TextAlignmentOptions.Left, true)
+            .textWrappingMode = TextWrappingModes.NoWrap;
+        Plain(Rect("Linea", canvas.transform, new Vector2(-720f, 150f), new Vector2(420f, 4f)).gameObject, Amber);
+        Tmp(canvas.transform, "Subtitulo", "El robot que cruzó las eras", 42, new Vector2(-520f, 100f), new Vector2(820f, 60f),
+            new Color(Parchment.r, Parchment.g, Parchment.b, 0.85f), TextAlignmentOptions.Left, false, body: true);
+        MenuButton(canvas.transform, "BotonJugar", "Jugar", new Vector2(-710f, -60f), menu.Play);
+        MenuButton(canvas.transform, "BotonCreditos", "Créditos", new Vector2(-710f, -170f), menu.ShowCredits);
+        MenuButton(canvas.transform, "BotonSalir", "Salir", new Vector2(-710f, -280f), menu.Quit);
+        Tmp(canvas.transform, "Pie", "Mesopotamia · Egipto · Grecia · China", 26, new Vector2(-520f, -470f), new Vector2(820f, 40f),
+            new Color(Parchment.r, Parchment.g, Parchment.b, 0.55f), TextAlignmentOptions.Left, false, body: true);
         EditorSceneManager.SaveScene(scene, Folder + "Inicio.unity");
     }
 
@@ -59,31 +77,138 @@ public static class FlowSceneBuilder
     {
         var scene = NewScene();
         Canvas canvas = NewCanvas("Canvas");
-        Fill(canvas.transform, "Fondo", new Color(0.08f, 0.07f, 0.09f));
         var loading = new GameObject("LoadingScreen").AddComponent<LoadingScreen>();
+        loading.background = Backdrop(canvas.transform, "Inicio");
+        loading.cultureBackgrounds = new[] { "Inicio", "Mesopotamia", "Egipto", "Grecia", "China" }
+            .Select(ScreenArtBuilder.Background).ToArray();
 
-        loading.titleText = Label(canvas.transform, "Titulo", "Cargando", 56, new Vector2(0f, 80f), new Vector2(1400f, 90f), Parchment);
-        RectTransform back = Rect("BarraFondo", canvas.transform, new Vector2(0f, -40f), new Vector2(900f, 36f));
-        back.gameObject.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0.15f);
+        var label = Tmp(canvas.transform, "Etiqueta", "CARGANDO", 28, new Vector2(0f, -225f), new Vector2(900f, 40f), Amber, TextAlignmentOptions.Center, false, body: true);
+        label.characterSpacing = 18f;
+        loading.titleText = Tmp(canvas.transform, "Titulo", "Cargando", 76, new Vector2(0f, -315f), new Vector2(1400f, 100f), Parchment, TextAlignmentOptions.Center, true);
+        RectTransform back = Rect("BarraFondo", canvas.transform, new Vector2(0f, -395f), new Vector2(900f, 26f));
+        var trough = back.gameObject.AddComponent<Image>();
+        trough.sprite = UiSkin.Bar; trough.type = Image.Type.Sliced;
         RectTransform fill = Rect("BarraRelleno", back, Vector2.zero, Vector2.zero);
-        fill.anchorMin = Vector2.zero; fill.anchorMax = new Vector2(0f, 1f); fill.offsetMin = fill.offsetMax = Vector2.zero;
-        fill.gameObject.AddComponent<Image>().color = new Color(1f, 0.48f, 0.1f);
+        fill.anchorMin = Vector2.zero; fill.anchorMax = new Vector2(0f, 1f); fill.offsetMin = new Vector2(4f, 4f); fill.offsetMax = new Vector2(-4f, -4f);
+        var bar = fill.gameObject.AddComponent<Image>();
+        bar.sprite = UiSkin.Fill; bar.type = Image.Type.Sliced; bar.color = Amber;
         loading.barFill = fill;
-        loading.percentText = Label(canvas.transform, "Porcentaje", "0%", 40, new Vector2(0f, -110f), new Vector2(400f, 60f), Parchment);
+        loading.percentText = Tmp(canvas.transform, "Porcentaje", "0%", 30, new Vector2(0f, -445f), new Vector2(400f, 44f),
+            new Color(Parchment.r, Parchment.g, Parchment.b, 0.8f), TextAlignmentOptions.Center, false, body: true);
         EditorSceneManager.SaveScene(scene, Folder + "Carga.unity");
     }
+
+    static readonly System.Collections.Generic.Dictionary<string, (string art, string header)> StoryLook =
+        new System.Collections.Generic.Dictionary<string, (string, string)>
+        {
+            { "Introduccion", ("Mesopotamia", "INTRODUCCIÓN") },
+            { "Despedida", ("China", "EPÍLOGO") },
+            { "Creditos", ("Grecia", "CRÉDITOS") },
+            { "Cierre", ("Egipto", "FIN") },
+        };
 
     static void BuildStory(string name, StoryScene.Script script)
     {
         var scene = NewScene();
         Canvas canvas = NewCanvas("Canvas");
-        Fill(canvas.transform, "Fondo", new Color(0.06f, 0.05f, 0.07f));
+        var look = StoryLook[name];
+        Backdrop(canvas.transform, look.art);
         var story = new GameObject("StoryScene").AddComponent<StoryScene>();
         story.script = script;
         story.nextScene = SceneFlow.Next(name);
-        story.text = Label(canvas.transform, "Texto", "", 52, Vector2.zero, new Vector2(1500f, 400f), Parchment);
-        Label(canvas.transform, "Ayuda", "Espacio para saltar", 28, new Vector2(0f, -460f), new Vector2(600f, 50f), new Color(1f, 1f, 1f, 0.4f));
+
+        Band(canvas.transform, "BandaSuperior", Shade, 1f, 120f);
+        Band(canvas.transform, "BandaInferior", Shade, 0f, 120f);
+        Rule(canvas.transform, "LineaSuperior", new Color(Amber.r, Amber.g, Amber.b, 0.8f), 1f, -120f);
+        Rule(canvas.transform, "LineaInferior", new Color(Amber.r, Amber.g, Amber.b, 0.8f), 0f, 120f);
+        var header = Tmp(canvas.transform, "Encabezado", look.header, 34, new Vector2(0f, 480f), new Vector2(1200f, 60f), Amber, TextAlignmentOptions.Center, false);
+        header.characterSpacing = 14f;
+        story.text = Tmp(canvas.transform, "Texto", "", 56, new Vector2(0f, 0f), new Vector2(1500f, 420f), Parchment, TextAlignmentOptions.Center, true);
+        Tmp(canvas.transform, "Ayuda", "Espacio para saltar", 24, new Vector2(760f, -480f), new Vector2(360f, 40f),
+            new Color(1f, 1f, 1f, 0.5f), TextAlignmentOptions.Right, false, body: true);
         EditorSceneManager.SaveScene(scene, Folder + name + ".unity");
+    }
+
+    // Level art behind every flow screen: slightly oversized so ScreenMotion can drift it, then a vignette.
+    static Image Backdrop(Transform canvas, string art)
+    {
+        RectTransform rt = Rect("Fondo", canvas, Vector2.zero, Vector2.zero);
+        rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+        rt.offsetMin = new Vector2(-60f, -34f); rt.offsetMax = new Vector2(60f, 34f);
+        var img = rt.gameObject.AddComponent<Image>();
+        img.sprite = ScreenArtBuilder.Background(art);
+        img.color = img.sprite != null ? Color.white : new Color(0.08f, 0.07f, 0.09f);
+        img.raycastTarget = false;
+        rt.gameObject.AddComponent<ScreenMotion>();
+        RectTransform v = Rect("Vineta", canvas, Vector2.zero, Vector2.zero);
+        v.anchorMin = Vector2.zero; v.anchorMax = Vector2.one; v.offsetMin = v.offsetMax = Vector2.zero;
+        var vignette = v.gameObject.AddComponent<Image>();
+        vignette.sprite = UiSkin.Vignette;
+        vignette.raycastTarget = false;
+        return img;
+    }
+
+    static void Plain(GameObject go, Color color)
+    {
+        var img = go.AddComponent<Image>();
+        img.color = color;
+        img.raycastTarget = false;
+    }
+
+    // Thin vertical strip on the right edge (anchorX = 1) of a panel.
+    static RectTransform Edge(RectTransform parent, string name, float anchorX, float width)
+    {
+        RectTransform rt = Rect(name, parent, Vector2.zero, new Vector2(width, 0f));
+        rt.anchorMin = new Vector2(anchorX, 0f); rt.anchorMax = new Vector2(anchorX, 1f); rt.pivot = new Vector2(anchorX, 0.5f);
+        rt.anchoredPosition = Vector2.zero;
+        return rt;
+    }
+
+    // TextMeshPro label: Metamorphous (titles, story) or the body font; `glow` uses the outlined title material.
+    static TextMeshProUGUI Tmp(Transform parent, string name, string text, float size, Vector2 pos, Vector2 box, Color color,
+        TextAlignmentOptions align, bool glow, bool body = false)
+    {
+        var t = Rect(name, parent, pos, box).gameObject.AddComponent<TextMeshProUGUI>();
+        t.font = body ? ScreenArtBuilder.BodyFont : ScreenArtBuilder.TitleFont;
+        if (glow && !body) t.fontSharedMaterial = TitleMaterial();
+        t.text = text; t.fontSize = size; t.color = color; t.alignment = align;
+        t.textWrappingMode = TextWrappingModes.Normal;
+        t.raycastTarget = false;
+        return t;
+    }
+
+    // Ink outline and a soft amber underlay on the title font (saved next to the font asset).
+    static Material TitleMaterial()
+    {
+        const string path = "Assets/Integrante4/Art/Fonts/Metamorphous Titulo.mat";
+        var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (mat != null) return mat;
+        mat = new Material(ScreenArtBuilder.TitleFont.material) { name = "Metamorphous Titulo" };
+        mat.SetFloat("_OutlineWidth", 0.12f);
+        mat.SetColor("_OutlineColor", new Color(0.1f, 0.06f, 0.03f, 1f));
+        mat.EnableKeyword("UNDERLAY_ON");
+        mat.SetColor("_UnderlayColor", new Color(0.55f, 0.28f, 0.05f, 0.6f));
+        mat.SetFloat("_UnderlayDilate", 0.3f);
+        mat.SetFloat("_UnderlaySoftness", 0.6f);
+        AssetDatabase.CreateAsset(mat, path);
+        return mat;
+    }
+
+    static void MenuButton(Transform parent, string name, string label, Vector2 pos, UnityEngine.Events.UnityAction onClick)
+    {
+        RectTransform rt = Rect(name, parent, pos, new Vector2(440f, 84f));
+        var img = rt.gameObject.AddComponent<Image>();
+        img.sprite = UiSkin.Sheet;
+        img.type = Image.Type.Sliced;
+        var button = rt.gameObject.AddComponent<UnityEngine.UI.Button>();
+        button.targetGraphic = img;
+        var colors = button.colors;
+        colors.highlightedColor = new Color(1f, 0.86f, 0.62f);
+        colors.pressedColor = new Color(0.85f, 0.7f, 0.45f);
+        button.colors = colors;
+        UnityEventTools.AddPersistentListener(button.onClick, onClick);
+        var t = Tmp(rt, "Texto", label, 44, Vector2.zero, rt.sizeDelta, Ink, TextAlignmentOptions.Center, false);
+        t.raycastTarget = false;
     }
 
     // Adds Ada's narrator, the summary card and the achievement toast to a level scene.
@@ -138,16 +263,17 @@ public static class FlowSceneBuilder
         var group = card.gameObject.AddComponent<CanvasGroup>();
         group.alpha = 0f;
         group.blocksRaycasts = false;
-        Label(card, "Nivel", "NIVEL " + level, 40, new Vector2(0f, 90f), new Vector2(1200f, 60f), accent);
-        var culture = Label(card, "Cultura", CulturePalette.CultureName(level).ToUpperInvariant(), 132, new Vector2(0f, -5f), new Vector2(1400f, 160f), Parchment);
-        culture.gameObject.AddComponent<Shadow>().effectDistance = new Vector2(3f, -3f);
+        Card(card, new Vector2(0f, 10f), new Vector2(1000f, 300f)); // framed dark card: the title reads over any landscape
+        var number = Tmp(card, "Nivel", "NIVEL " + level, 44, new Vector2(0f, 95f), new Vector2(1200f, 60f), accent, TextAlignmentOptions.Center, true);
+        number.characterSpacing = 18f;
+        Tmp(card, "Cultura", CulturePalette.CultureName(level).ToUpperInvariant(), 140, new Vector2(0f, -5f), new Vector2(1400f, 170f), Parchment, TextAlignmentOptions.Center, true);
         var line = Rect("Linea", card, new Vector2(0f, -100f), new Vector2(520f, 4f)).gameObject.AddComponent<Image>();
         line.color = accent;
         line.raycastTarget = false;
         director.title = group;
 
-        director.subtitle = Label(canvas.transform, "Subtitulo", "", 36, new Vector2(0f, -465f), new Vector2(1600f, 100f), Parchment);
-        Label(canvas.transform, "Ayuda", "Espacio para saltar", 24, new Vector2(800f, -505f), new Vector2(320f, 40f), new Color(1f, 1f, 1f, 0.45f));
+        director.subtitle = Tmp(canvas.transform, "Subtitulo", "", 38, new Vector2(0f, -465f), new Vector2(1600f, 100f), Parchment, TextAlignmentOptions.Center, false, body: true);
+        Tmp(canvas.transform, "Ayuda", "Espacio para saltar", 24, new Vector2(780f, -505f), new Vector2(360f, 40f), new Color(1f, 1f, 1f, 0.45f), TextAlignmentOptions.Right, false, body: true);
 
         RectTransform fade = Rect("Fundido", canvas.transform, Vector2.zero, Vector2.zero);
         fade.anchorMin = Vector2.zero; fade.anchorMax = Vector2.one; fade.offsetMin = fade.offsetMax = Vector2.zero;
@@ -274,12 +400,6 @@ public static class FlowSceneBuilder
         return rt;
     }
 
-    static void Fill(Transform parent, string name, Color color)
-    {
-        RectTransform rt = Rect(name, parent, Vector2.zero, Vector2.zero);
-        rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.offsetMin = rt.offsetMax = Vector2.zero;
-        rt.gameObject.AddComponent<Image>().color = color;
-    }
 
     // Dark glass card with the parchment double frame (UiSkin.Panel) behind a menu.
     static void Card(Transform parent, Vector2 pos, Vector2 size)

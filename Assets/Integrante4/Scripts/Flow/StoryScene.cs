@@ -1,6 +1,6 @@
 using System.Collections;
+using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 // Skippable text sequence (intro, epilogue, credits, farewell). Space/Enter/Esc skips.
 public class StoryScene : MonoBehaviour
@@ -8,7 +8,8 @@ public class StoryScene : MonoBehaviour
     public enum Script { Intro, Epilogue, Credits, Farewell }
 
     public Script script;
-    public Text text;
+    public TMP_Text text;
+    public float fadeSeconds = 0.6f;
     public float secondsPerLine = 3.5f;
     public string nextScene = SceneLoader.StartScene;
 
@@ -23,6 +24,8 @@ public class StoryScene : MonoBehaviour
             {
                 if (SkipPressed()) { Finish(); yield break; }
                 t += Time.unscaledDeltaTime;
+                // each line fades in and out instead of cutting
+                if (text != null) text.alpha = Mathf.Clamp01(Mathf.Min(t, secondsPerLine - t) / fadeSeconds);
                 yield return null;
             }
         }

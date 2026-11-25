@@ -75,6 +75,17 @@ public static class UiSkin
         return new Color(v, v, v, 1f);
     });
 
+    // Full-screen vignette over background art (T35): clear centre, ink edges, heavier at the bottom where text sits.
+    public static Sprite Vignette => Get("ui_vignette", 256, 0, (x, y, s) =>
+    {
+        float u = (x + 0.5f) / s - 0.5f, v = (y + 0.5f) / s - 0.5f;
+        float radial = Mathf.Clamp01((Mathf.Sqrt(u * u + v * v) - 0.3f) / 0.45f);
+        radial = radial * radial * (3f - 2f * radial);
+        float bottom = Mathf.Clamp01(0.2f - v);
+        float a = Mathf.Clamp01(radial * 0.5f + bottom * 0.45f + 0.1f);
+        return new Color(0.04f, 0.03f, 0.02f, a);
+    });
+
     static readonly Color Clear = new Color(0f, 0f, 0f, 0f);
 
     // Signed distance to a rounded square filling the texture (negative inside).

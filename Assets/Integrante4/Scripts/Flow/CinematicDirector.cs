@@ -1,3 +1,4 @@
+using TMPro;
 using Unit404.Integrante4.Core;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -13,7 +14,7 @@ public class CinematicDirector : MonoBehaviour
     public Transform[] path;
     public Transform[] lookAt;
     public CanvasGroup title;
-    public Text subtitle;
+    public TMP_Text subtitle;
     public Image fade;
 
     float t;
@@ -25,8 +26,7 @@ public class CinematicDirector : MonoBehaviour
     void Start()
     {
         Time.timeScale = 1f;
-        px = Axis(path, 0); py = Axis(path, 1); pz = Axis(path, 2);
-        lx = Axis(lookAt, 0); ly = Axis(lookAt, 1); lz = Axis(lookAt, 2);
+        ReadPath();
         if (Application.CanStreamedLevelBeLoaded(nextScene))
         {
             load = SceneManager.LoadSceneAsync(nextScene);
@@ -50,6 +50,19 @@ public class CinematicDirector : MonoBehaviour
         float closing = CinematicScript.Duration - 0.8f;
         if (t < closing) t = closing;
         leaveAt = CinematicScript.Duration;
+    }
+
+    // Poses the camera and overlays as at `time` without playing (editor renders of the screen backgrounds, T35).
+    public void Preview(float time)
+    {
+        ReadPath();
+        Apply(time);
+    }
+
+    void ReadPath()
+    {
+        px = Axis(path, 0); py = Axis(path, 1); pz = Axis(path, 2);
+        lx = Axis(lookAt, 0); ly = Axis(lookAt, 1); lz = Axis(lookAt, 2);
     }
 
     void Finish()
