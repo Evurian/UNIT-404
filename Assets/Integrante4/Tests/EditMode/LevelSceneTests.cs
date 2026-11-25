@@ -809,20 +809,32 @@ namespace Unit404.Integrante4.Tests
             }
         }
 
-        // ODD S22 (L46 visual check): pollution hazards (incense, dust storm) read as translucent haze, not solid blocks.
+        // ODD S38 / T39: pollution hazards (incense, dust storm) read as particle clouds filling their trigger, not as a
+        // box: the primitive renders nothing, a soft-textured, see-through particle system fills the same volume.
         [TestCase("Nivel1_Mesopotamia")]
         [TestCase("Nivel4_China")]
-        public void Hazards_AreTranslucentHaze(string sceneName)
+        public void Hazards_AreParticleClouds(string sceneName)
         {
             Open(sceneName);
             var hazards = GameObject.FindGameObjectsWithTag("Contaminacion");
             Assert.Greater(hazards.Length, 0);
             foreach (var h in hazards)
             {
-                var mat = h.GetComponent<Renderer>().sharedMaterial;
-                Assert.Less(mat.color.a, 0.5f, h.name + " alpha");
-                Assert.GreaterOrEqual(mat.renderQueue, 3000, h.name + " transparent queue");
-                Assert.IsTrue(h.GetComponent<Collider>().isTrigger, h.name + " stays a trigger");
+                var col = h.GetComponent<Collider>();
+                Assert.IsTrue(col.isTrigger, h.name + " stays a trigger");
+                Assert.IsFalse(h.GetComponent<Renderer>().enabled, h.name + " primitive hidden");
+                var ps = h.GetComponentInChildren<ParticleSystem>(true);
+                Assert.IsNotNull(ps, h.name + " particle cloud");
+                Assert.IsTrue(ps.main.loop && ps.main.prewarm, h.name + " always on");
+                Assert.Less(ps.main.startColor.color.a, 0.6f, h.name + " see-through");
+                var mat = ps.GetComponent<ParticleSystemRenderer>().sharedMaterial;
+                Assert.IsNotNull(mat, h.name + " material");
+                Assert.IsNotNull(mat.mainTexture, h.name + " soft puff texture");
+                Vector3 area = Vector3.Scale(ps.shape.scale, ps.transform.lossyScale);
+                Vector3 box = col.bounds.size;
+                // front area (x, y): a sphere trigger is as deep as it is wide even when the 2.5D cloud is thin in z
+                float covered = Mathf.Abs(area.x * area.y) / (box.x * box.y);
+                Assert.That(covered, Is.InRange(0.5f, 1.5f), h.name + " cloud fills the trigger area: " + area + " vs " + box);
             }
         }
 
