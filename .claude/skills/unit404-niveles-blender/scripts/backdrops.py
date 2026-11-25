@@ -74,10 +74,15 @@ def ziggurat(stone, trim, x, y, w=16.0, tiers=4):
 
 
 def temple(stone, trim, x, y, cols=6, h=6.0, broken=(), z=0.0):
+    """Peristyle temple (ODD S37, T38): columns on all four sides under the roof, not only a front row."""
     parts = [box(trim, cols * 2.4, 6.0, 0.8 + z, x, y, 0)]
-    for i in range(cols):
-        ch = h * (0.45 if i in broken else 1.0)
-        parts.append(cone(stone, 0.5, 0.42, ch, 16, x - (cols - 1) * 1.2 + i * 2.4, y - 2.0, 0.8 + z))
+    x0 = x - (cols - 1) * 1.2
+    for row, dy in enumerate((-2.0, 2.0)):  # front and back rows
+        for i in range(cols):
+            ch = h * (0.45 if i in broken and row == 0 else 1.0)
+            parts.append(cone(stone, 0.5, 0.42, ch, 16, x0 + i * 2.4, y + dy, 0.8 + z))
+    for sx in (x0, x0 + (cols - 1) * 2.4):  # side columns between the corner ones
+        parts.append(cone(stone, 0.5, 0.42, h * (0.45 if broken else 1.0), 16, sx, y, 0.8 + z))
     if not broken:
         parts.append(box(trim, cols * 2.4, 6.0, 0.9, x, y, h + 0.8 + z))
     return parts
@@ -135,6 +140,14 @@ def ground(hill, x, y):
     """Height of the hills strip at (x, y): nearest grid vertex (strips are built at the origin)."""
     best = min(hill.data.vertices, key=lambda v: (v.co.x - x) ** 2 + (v.co.y - y) ** 2)
     return best.co.z
+
+
+def wall_line(hill, x):
+    """Great Wall course at x: (y, foundation base, walkway height). The walkway rides 1.6 m over the ground at the
+    centre and the body reaches 0.3 m under the lowest ground of its 2.1 x 1.4 footprint, so it never floats."""
+    y = 9.0 + 2.0 * math.sin(x * 0.07)
+    lowest = min(ground(hill, x + dx, y + dy) for dx in (-1.05, 1.05) for dy in (-0.7, 0.7))
+    return y, lowest - 0.3, ground(hill, x, y) + 1.6
 
 
 def boat(M, x, y, z, l=4.0, crew=1, rnd=None):
@@ -258,14 +271,15 @@ def extras(culture, layer, M, rnd, hill):
                         P += figure(M, x, 6.5 + t * 2.0, 0.62 + t * 0.6, "bend" if (k + t) % 2 else "hoe", face=rnd.uniform(-0.8, 0.8), hat=True)
         elif layer == "mid":  # wall builders carrying loads on shoulder poles, scaffolding at a tower
             for i, x in enumerate((-20.0, -12.0, -3.0, 8.0, 16.0)):
-                z = 4.5 + 2.5 * math.sin(x * 0.11) + 1.6
-                P += figure(M, x, 9.0 + 2.0 * math.sin(x * 0.07), z, "carry", face=math.pi / 2, hat=True, load="pole")
+                y, _, walk = wall_line(hill, x)
+                P += figure(M, x, y, walk, "carry", face=math.pi / 2, hat=True, load="pole")
             xs = -SEG / 2 + 1 + 15 * 2.0  # tower at i = 15
-            zs = 4.5 + 2.5 * math.sin(xs * 0.11)
+            ys, _, ws = wall_line(hill, xs)
+            zs = ground(hill, xs, ys - 1.9)
             for k in range(4):
-                P.append(box(M["trunk"], 0.08, 0.08, 5.0, xs - 1.8 + k * 1.2, 9.0 + 2.0 * math.sin(xs * 0.07) - 1.9, zs))
+                P.append(box(M["trunk"], 0.08, 0.08, ws + 2.0 - zs, xs - 1.8 + k * 1.2, ys - 1.9, zs))
             for k in range(3):
-                P.append(box(M["trunk"], 3.8, 0.4, 0.06, xs, 9.0 + 2.0 * math.sin(xs * 0.07) - 1.9, zs + 1.2 + k * 1.3))
+                P.append(box(M["trunk"], 3.8, 0.4, 0.06, xs, ys - 1.9, zs + 1.2 + k * 1.3))
         else:  # pagoda on the foothills
             for t in range(5):
                 w = 4.0 - t * 0.6
@@ -278,6 +292,7 @@ def extras(culture, layer, M, rnd, hill):
 def build_layer(culture, layer, M):
     rnd = random.Random(sum(map(ord, culture + layer)))  # stable across runs (str hash is salted)
     P = []
+    hill = None
     if culture == "mesopotamia":
         if layer == "near":
             P.append(hills(M["sand"], SEG, 10, 0.6, 0, 1, 24))
@@ -344,22 +359,24 @@ def build_layer(culture, layer, M):
                 rocky(r, 0.4, 4)
                 P.append(r)
         elif layer == "mid":
-            P.append(hills(M["grass"], SEG, 16, 7.0, 0, 9, 40))
-            for i in range(30):  # the Great Wall riding the ridge
+            hill = hills(M["grass"], SEG, 16, 7.0, 0, 9, 40)
+            P.append(hill)
+            for i in range(30):  # the Great Wall riding the ridge, standing on the hills (ODD S37, T38)
                 x = -SEG / 2 + 1 + i * 2.0
-                z = 4.5 + 2.5 * math.sin(x * 0.11)
-                P.append(box(M["stone"], 2.1, 1.4, 1.6, x, 9.0 + 2.0 * math.sin(x * 0.07), z))
+                y, base, walk = wall_line(hill, x)
+                P.append(box(M["stone"], 2.1, 1.4, walk - base, x, y, base))  # body + foundation down into the ground
                 if i % 2 == 0:
-                    P.append(box(M["stone"], 0.6, 1.5, 0.5, x, 9.0 + 2.0 * math.sin(x * 0.07), z + 1.6))
+                    P.append(box(M["stone"], 0.6, 1.5, 0.5, x, y, walk))
                 if i % 10 == 5:
-                    P.append(box(M["trim"], 3.0, 3.0, 3.6, x, 9.0 + 2.0 * math.sin(x * 0.07), z))
+                    P.append(box(M["trim"], 3.0, 3.0, walk + 2.0 - base, x, y, base))
         else:
             for x, s in ((-20, 14), (-6, 22), (8, 16), (22, 26)):
                 m = cone(M["rock"], s * 0.45, s * 0.08, s * 1.2, 10, x, 18 + rnd.uniform(-3, 3), 0)
                 rocky(m, 1.2, 4)
                 P.append(m)
             P.append(hills(M["grass"], SEG, 12, 2.0, 0, 10, 24))
-    hill = next((o for o in P if o.name.startswith("Grid")), None)
+    if hill is None:
+        hill = next((o for o in P if o.name.startswith("Grid")), None)
     P += extras(culture, layer, M, rnd, hill)
     return join(P, f"{culture}_bg_{layer}", bevel=0)
 
