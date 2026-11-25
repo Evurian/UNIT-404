@@ -509,6 +509,49 @@ namespace Unit404.Integrante4.Tests
             }
         }
 
+        // ODD S40 / T41: along the 3D main line (full-width walkways) every height change is a ramp, never a step;
+        // China has no gap at all and its wall walk is a solid body down to the ground.
+        [TestCase("Nivel3_Grecia", true)]
+        [TestCase("Nivel4_China", false)]
+        public void MainLine_HasNoStepWithoutARamp(string sceneName, bool gapsAllowed)
+        {
+            Open(sceneName);
+            var walk = Solids().Where(b => b.bounds.min.z <= -3.9f && b.bounds.max.z >= 3.9f && b.CompareTag("Untagged") && !b.name.StartsWith("Puerta")).ToArray(); // lintels are overhead
+            float end = GameObject.Find("PortalLlegada").transform.position.x;
+            float? prev = null;
+            for (float x = 0.25f; x < end; x += 0.5f)
+            {
+                float? top = null;
+                foreach (var b in walk)
+                {
+                    if (b.bounds.min.x > x || b.bounds.max.x < x) continue;
+                    float t = b.bounds.max.y;
+                    if (Mathf.Abs(Mathf.DeltaAngle(b.transform.eulerAngles.z, 0f)) > 0.5f)
+                    {
+                        Vector3 sc = b.transform.lossyScale;
+                        Vector3 lo = b.transform.position + b.transform.rotation * new Vector3(-sc.x / 2f, sc.y / 2f, 0f);
+                        Vector3 hi = b.transform.position + b.transform.rotation * new Vector3(sc.x / 2f, sc.y / 2f, 0f);
+                        t = Mathf.Lerp(lo.y, hi.y, Mathf.InverseLerp(lo.x, hi.x, x));
+                    }
+                    top = top.HasValue ? Mathf.Max(top.Value, t) : t;
+                }
+                if (!top.HasValue)
+                {
+                    Assert.IsTrue(gapsAllowed, "gap in the main line at x " + x);
+                    continue;
+                }
+                if (prev.HasValue) Assert.LessOrEqual(Mathf.Abs(top.Value - prev.Value), 0.35f, "step without a ramp at x " + x.ToString("0.0") + ": " + prev + " -> " + top);
+                prev = top;
+            }
+            if (!gapsAllowed)
+                foreach (var name in new[] { "Adarve", "Tramo_Ancho" })
+                {
+                    Bounds w = GameObject.Find(name).GetComponent<Collider>().bounds;
+                    Assert.IsTrue(walk.Any(b => b.bounds.min.y <= 0.05f && b.bounds.max.y >= w.min.y - 0.05f && b.bounds.min.x <= w.min.x + 0.05f && b.bounds.max.x >= w.max.x - 0.05f),
+                        name + " has a wall body down to the ground");
+                }
+        }
+
         // ODD S25 / T25: six invisible solid bounds keep the robot inside the level even if a bug launches it.
         [TestCase("Nivel1_Mesopotamia", false)]
         [TestCase("Nivel2_Egipto", false)]

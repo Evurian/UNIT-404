@@ -217,10 +217,14 @@ public static class LevelSceneBuilder
         Pickups(root, "Fragmento", 42f, 78f, 4, 5f);
         Tagged(root, "Checkpoint_1", "Checkpoint", PrimitiveType.Cube, new Vector3(78f, 2f, 0f), new Vector3(1f, 4f, 1f), true);
 
-        // 3. Adarve de la muralla (x 80-120): carts and dust storm
-        Walk(root, "Adarve", 100f, 5f, 40f, 2f);
+        // 3. Adarve de la muralla (x 80-120): a ramp up the wall (0 -> 6, ODD S40), then the wall walk with carts and
+        // dust storm. The wall is a solid body down to the ground, no void under the walkway.
+        Rampa(root, "Rampa_Muralla", 86f, 0f, 12f, 6f);
+        RampBody(root, "Muro_Rampa", 86f, 0f, 12f, 6f, 4);
+        Walk(root, "Adarve", 106f, 5f, 28f, 2f);
+        Solid(root, "Muro_Adarve", 106f, 2f, 28f, 4f, Wall, 0f, pathDepth);
         // Rows of carts side by side across the 8 m wall walk (ODD S19), on the walkway (top 6), moving together.
-        for (int i = 0; i < 3; i++) CartRow(root, "Carreta_" + (i + 1), 88f + i * 12f, 6f, -pathDepth / 2f, pathDepth / 2f, 3);
+        for (int i = 0; i < 3; i++) CartRow(root, "Carreta_" + (i + 1), 95f + i * 9f, 6f, -pathDepth / 2f, pathDepth / 2f, 3);
         // The side path beside the wall walk would skirt the carts: it gets its own row (top 5, z 6..12, x 93-107).
         CartRow(root, "Carreta_Lateral_Adarve", 98f, 5f, 6f, 12f, 2);
         Tagged(root, "TormentaPolvo", "Contaminacion", PrimitiveType.Cube, new Vector3(108f, 8f, 0f), new Vector3(8f, 6f, 6f), true, new Color(0.8f, 0.7f, 0.3f));
@@ -228,18 +232,21 @@ public static class LevelSceneBuilder
 
         // 4. Tramo ancho entre torres (x 120-160): second checkpoint and Chiyou arena
         Walk(root, "Tramo_Ancho", 140f, 5f, 40f, 2f);
+        Solid(root, "Muro_Tramo", 140f, 2f, 40f, 4f, Wall, 0f, pathDepth);
         Tagged(root, "Checkpoint_2", "Checkpoint", PrimitiveType.Cube, new Vector3(124f, 8f, 0f), new Vector3(1f, 4f, 1f), true);
         Tagged(root, "Chiyou", "Jefe", PrimitiveType.Capsule, new Vector3(150f, 8.5f, 0f), new Vector3(3f, 3f, 3f), false);
         Solid(root, "Mastil_1", 130f, 9f, 0.5f, 8f, Wall);
         Pickups(root, "Fragmento", 126f, 156f, 3, 8f);
         Ring(root, 60f, 10f); Ring(root, 104f, 10f); Ring(root, 142f, 10f);
 
-        // 5. Torre del estandarte (x 160-190): arrival portal
+        // 5. Torre del estandarte (x 160-190): the wall climbs to the tower top (6 -> 12, ODD S40), arrival portal
+        Rampa(root, "Rampa_Torre", 168f, 6f, 16f, 6f);
+        RampBody(root, "Muro_Subida", 168f, 6f, 16f, 6f, 4);
         Solid(root, "Torre_Estandarte", 180f, 6f, 8f, 12f, Wall, 0f, pathDepth);
         Portal(root, 180f, 12f);
-        Pickups(root, "Fragmento", 162f, 172f, 3, 8f);
+        foreach (float fx in new[] { 162f, 167f, 172f }) Pickups(root, "Fragmento", fx, fx, 1, RampTop(fx, 168f, 6f, 16f, 6f) + 1.5f);
 
-        Glyphs(root, new[] { 10f, 30f, 48f, 72f, 96f, 114f, 138f, 166f }, new[] { 4f, 6f, 5f, 6f, 9f, 9f, 8f, 7f }, "TiraBambu");
+        Glyphs(root, new[] { 10f, 30f, 48f, 72f, 96f, 114f, 138f, 166f }, new[] { 4f, 6f, 5f, 6f, 9f, 9f, 8f, RampTop(166f, 168f, 6f, 16f, 6f) + 1.5f }, "TiraBambu");
         SidePath(root, "Torre", 60f, 0f, -9f); SidePath(root, "Adarve", 100f, 5f, 9f); SidePath(root, "Tramo", 140f, 5f, -9f);
 
         // Culture dressing (ODD S28-S29, T30-T31): guardian lions, paifang gates with crossbowmen, lanterns and banners.
@@ -1141,6 +1148,19 @@ public static class LevelSceneBuilder
         Vector3 centre = new Vector3(x, y + h / 2f, 0f) - normal * (RampThickness / 2f);
         var go = Make(p, name, PrimitiveType.Cube, centre, new Vector3(Mathf.Sqrt(w * w + h * h), RampThickness, pathDepth), Wall, "Entorno");
         go.transform.rotation = Quaternion.Euler(0f, 0f, angle * Mathf.Rad2Deg);
+    }
+
+    // Solid masonry under a ramp, from the ground (y 0) up to just under the slab, in `steps` blocks whose tops follow the
+    // slope at their low edge, so no void shows beneath the walkway (ODD S40). Named Muro_* so they wear the wall kit.
+    static void RampBody(Transform p, string name, float x, float y, float w, float h, int steps)
+    {
+        float x0 = x - w / 2f, sw = w / steps;
+        for (int i = 0; i < steps; i++)
+        {
+            float top = RampTop(x0 + i * sw, x, y, w, h) - RampThickness;
+            if (top < 0.25f) continue;
+            Solid(p, name + "_" + (i + 1), x0 + (i + 0.5f) * sw, top / 2f, sw, top, Wall, 0f, pathDepth);
+        }
     }
 
     // Height of the ramp surface at x (for obstacles that roll on it).
