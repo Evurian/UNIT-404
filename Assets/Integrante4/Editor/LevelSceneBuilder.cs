@@ -293,7 +293,7 @@ public static class LevelSceneBuilder
         }
         player.GetComponent<Renderer>().sharedMaterial = Mat(new Color(0.2f, 0.7f, 0.9f));
 
-        PlayBounds(freeDepth);
+        PlayBounds(freeDepth, name[5] - '0');
         ApplyKit(name[5] - '0');
         if (!freeDepth) Dress25D(name[5] - '0');
         ApplyElements(name[5] - '0', freeDepth);
@@ -304,7 +304,7 @@ public static class LevelSceneBuilder
         var hud = AssetDatabase.LoadAssetAtPath<GameObject>(HudPath);
         if (hud != null) PrefabUtility.InstantiatePrefab(hud);
         new GameObject("HudEventSimulator (solo pruebas)").AddComponent<HudEventSimulator>();
-        FlowSceneBuilder.AddPauseMenu();
+        FlowSceneBuilder.AddPauseMenu().fallScreen = Object.FindFirstObjectByType<FallScreen>();
         int level = name[5] - '0';
         FlowSceneBuilder.AddNarrator(level, level < 4 ? NextLevel[level] : "Despedida");
 
@@ -319,7 +319,7 @@ public static class LevelSceneBuilder
     static Bounds levelBounds;
     static float floorBoundTop;
 
-    static void PlayBounds(bool freeDepth)
+    static void PlayBounds(bool freeDepth, int level)
     {
         Physics.SyncTransforms();
         var root = GameObject.Find("Nivel").transform;
@@ -357,7 +357,7 @@ public static class LevelSceneBuilder
         trigger.isTrigger = true;
         var fall = zone.AddComponent<FallZone>();
 
-        var screen = FlowSceneBuilder.AddFallScreen();
+        var screen = FlowSceneBuilder.AddFallScreen(level);
         fall.screen = screen;
         screen.playerStart = GameObject.Find("PlayerStart").transform;
         screen.checkpoints = GameObject.FindGameObjectsWithTag("Checkpoint").Select(c => c.transform).OrderBy(c => c.position.x).ToArray();
@@ -958,7 +958,7 @@ public static class LevelSceneBuilder
     }
 
     // 2.5D levels: a decorative ground strip behind every main floor (z 1-5, same top, no collider: the player is held at
-    // z = 0 by the side bounds) dressed with culture props. The boss arena keeps its ground but no props.
+    // z = 0 by the side bounds) dressed with culture props. The boss arena gets neither (ODD S35: its floor keeps the path depth).
     const float ApronZ0 = 1f, ApronDepth = 4f;
     static readonly string[][] DecoKinds =
     {
@@ -1005,15 +1005,15 @@ public static class LevelSceneBuilder
         for (int i = 0; i < nx; i++)
         {
             float cx = floor.min.x + w * (i + 0.5f);
-            bool arena = cx > ArenaStartX && cx < ArenaEndX, basalt = arena && level == 1; // same ground rule as ApplyKit (ODD S23 c)
-            string folder = basalt ? "Arena" : culture, mesh = basalt ? "arena_platform" : prefix + "_platform";
+            if (cx > ArenaStartX && cx < ArenaEndX) continue;
+            string folder = culture, mesh = prefix + "_platform";
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ArtFolder + folder + "/" + mesh + ".fbx");
             if (prefab == null) { Debug.LogWarning("Kit piece missing: " + mesh); return; }
             var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab, root);
             go.name = "Deco_Explanada_" + label;
             go.transform.localScale = new Vector3(w / 4f, 1f, ApronDepth / 4f);
             go.transform.position = new Vector3(cx, floor.max.y - 1f, ApronZ0 + ApronDepth / 2f);
-            Skin(go, 0, KitMaterial(folder, arena && !basalt ? prefix + "_arena_platform" : mesh, Color.gray));
+            Skin(go, 0, KitMaterial(folder, mesh, Color.gray));
         }
     }
 

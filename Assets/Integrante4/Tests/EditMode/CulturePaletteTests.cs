@@ -16,6 +16,25 @@ namespace Unit404.Integrante4.Tests
             Assert.AreEqual(accentHex, CulturePalette.AccentHex(level));
         }
 
+        // ODD S36 / T36: the fall screen is tinted with a dark shade of each culture, not one brown for all.
+        [TestCase(1, "#2B1A0E")]
+        [TestCase(2, "#0D2624")]
+        [TestCase(3, "#0F1D30")]
+        [TestCase(4, "#0E2416")]
+        public void Level_MapsToCultureFallTint(int level, string fallHex)
+        {
+            Assert.AreEqual(fallHex, CulturePalette.FallHex(level));
+        }
+
+        [TestCase(1, "Mesopotamia")]
+        [TestCase(2, "Egipto")]
+        [TestCase(3, "Grecia")]
+        [TestCase(4, "China")]
+        public void Level_MapsToCultureName(int level, string name)
+        {
+            Assert.AreEqual(name, CulturePalette.CultureName(level));
+        }
+
         [Test]
         public void OutOfRangeLevel_Throws()
         {

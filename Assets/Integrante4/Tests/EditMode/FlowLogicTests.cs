@@ -44,6 +44,19 @@ namespace Unit404.Integrante4.Tests
         }
 
         [Test]
+        // ODD S34 / T36: Esc must not open the pause menu while "Sistema caído" is showing.
+        public void PauseState_EscapeIsIgnoredWhileBlocked()
+        {
+            var state = new PauseState();
+            Assert.IsFalse(state.HandleEscape(blocked: true));
+            Assert.IsFalse(state.Paused);
+            Assert.IsTrue(state.HandleEscape(blocked: false));
+            Assert.IsTrue(state.Paused);
+            Assert.IsTrue(state.HandleEscape(blocked: false));
+            Assert.IsFalse(state.Paused);
+        }
+
+        [Test]
         public void PauseState_SetPausedIsIdempotent()
         {
             var state = new PauseState();

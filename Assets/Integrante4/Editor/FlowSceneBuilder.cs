@@ -1,3 +1,4 @@
+using Unit404.Integrante4.Core;
 using UnityEditor;
 using UnityEditor.Events;
 using UnityEditor.SceneManagement;
@@ -105,7 +106,7 @@ public static class FlowSceneBuilder
     }
 
     // Called by LevelSceneBuilder before saving each level scene.
-    public static void AddPauseMenu()
+    public static PauseMenu AddPauseMenu()
     {
         EnsureEventSystem();
         Canvas canvas = NewCanvas("PausaCanvas", 20);
@@ -120,25 +121,67 @@ public static class FlowSceneBuilder
         Button(panel, "BotonReiniciar", "Reiniciar nivel", new Vector2(0f, -70f), menu.Restart);
         Button(panel, "BotonInicio", "Ir al inicio", new Vector2(0f, -200f), menu.ToStart);
         menu.panel = panel.gameObject;
+        return menu;
     }
 
-    // "Sistema caído" retry screen (ODD S25, T27); LevelSceneBuilder wires the respawn targets.
-    public static FallScreen AddFallScreen()
+    // "Sistema caído" retry screen (ODD S25, T27; redesigned S34/S36, T36): a full screen in the culture's dark
+    // shade with its accent, not an overlay. LevelSceneBuilder wires the respawn targets.
+    public static FallScreen AddFallScreen(int level)
     {
         EnsureEventSystem();
         Canvas canvas = NewCanvas("CaidaCanvas", 25);
         var screen = new GameObject("FallScreen").AddComponent<FallScreen>();
+        ColorUtility.TryParseHtmlString(CulturePalette.FallHex(level), out Color shade);
+        ColorUtility.TryParseHtmlString(CulturePalette.AccentHex(level), out Color accent);
+        shade.a = 0.97f;
 
         RectTransform panel = Rect("PanelCaida", canvas.transform, Vector2.zero, Vector2.zero);
         panel.anchorMin = Vector2.zero; panel.anchorMax = Vector2.one; panel.offsetMin = panel.offsetMax = Vector2.zero;
-        panel.gameObject.AddComponent<Image>().color = new Color(0.08f, 0.05f, 0.03f, 0.82f);
-        Card(panel, new Vector2(0f, 50f), new Vector2(1080f, 420f));
-        Label(panel, "Titulo", "Sistema caído", 90, new Vector2(0f, 140f), new Vector2(1000f, 120f), Parchment);
-        Button(panel, "BotonReintentar", "Reintentar desde el punto de control", new Vector2(0f, -40f), screen.Retry);
+        panel.gameObject.AddComponent<Image>().color = shade;
+        // darker bands top and bottom frame the screen like a letterbox
+        Color band = Color.Lerp(shade, Color.black, 0.55f);
+        Band(panel, "BandaSuperior", band, 1f, 140f);
+        Band(panel, "BandaInferior", band, 0f, 140f);
+        Rule(panel, "LineaSuperior", accent, 1f, -140f);
+        Rule(panel, "LineaInferior", accent, 0f, 140f);
+
+        Card(panel, new Vector2(0f, 10f), new Vector2(1180f, 560f));
+        var emblem = Rect("Emblema", panel, new Vector2(0f, 230f), new Vector2(72f, 72f)).gameObject.AddComponent<Image>();
+        emblem.sprite = UiSkin.Core;
+        emblem.color = accent;
+        emblem.raycastTarget = false;
+        Label(panel, "Cultura", CulturePalette.CultureName(level).ToUpperInvariant(), 34, new Vector2(0f, 160f), new Vector2(1000f, 50f), accent);
+        Label(panel, "Titulo", "Sistema caído", 96, new Vector2(0f, 80f), new Vector2(1100f, 120f), Parchment);
+        Label(panel, "Subtitulo", "Señal perdida. UNIT-404 se restaura desde el último punto seguro.", 34,
+            new Vector2(0f, -10f), new Vector2(1100f, 50f), new Color(Parchment.r, Parchment.g, Parchment.b, 0.75f));
+        Button(panel, "BotonReintentar", "Reintentar desde el punto de control", new Vector2(0f, -130f), screen.Retry);
         foreach (var rt in panel.Find("BotonReintentar").GetComponentsInChildren<RectTransform>()) rt.sizeDelta = new Vector2(900f, 96f);
         screen.panel = panel.gameObject;
         panel.gameObject.SetActive(false);
         return screen;
+    }
+
+    // Full-width strip anchored to the top (anchorY = 1) or bottom (anchorY = 0) edge.
+    static void Band(Transform parent, string name, Color color, float anchorY, float height)
+    {
+        RectTransform rt = Rect(name, parent, Vector2.zero, new Vector2(0f, height));
+        rt.anchorMin = new Vector2(0f, anchorY); rt.anchorMax = new Vector2(1f, anchorY);
+        rt.pivot = new Vector2(0.5f, anchorY);
+        rt.anchoredPosition = Vector2.zero;
+        var img = rt.gameObject.AddComponent<Image>();
+        img.color = color;
+        img.raycastTarget = false;
+    }
+
+    // Thin accent line across the screen at `offset` from the top/bottom edge.
+    static void Rule(Transform parent, string name, Color color, float anchorY, float offset)
+    {
+        RectTransform rt = Rect(name, parent, Vector2.zero, new Vector2(0f, 4f));
+        rt.anchorMin = new Vector2(0f, anchorY); rt.anchorMax = new Vector2(1f, anchorY);
+        rt.anchoredPosition = new Vector2(0f, offset);
+        var img = rt.gameObject.AddComponent<Image>();
+        img.color = color;
+        img.raycastTarget = false;
     }
 
     // ---- UI helpers ----

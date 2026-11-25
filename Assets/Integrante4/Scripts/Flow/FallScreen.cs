@@ -20,6 +20,8 @@ public class FallScreen : MonoBehaviour
     bool bossDefeated;
     RespawnPoint pending;
 
+    public bool IsOpen => panel != null && panel.activeSelf;
+
     void OnEnable() => GameEvents.OnBossDefeated += HandleBossDefeated;
     void OnDisable()
     {

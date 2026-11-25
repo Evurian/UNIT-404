@@ -363,6 +363,8 @@ namespace Unit404.Integrante4.Tests
             {
                 var ground = Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None).Where(r => r.name.StartsWith("Deco_Explanada")).Select(r => r.bounds).ToArray();
                 Assert.Greater(ground.Length, 0, "decorative ground behind the path");
+                // ODD S35 / T37: the arena floor keeps the path depth, no decorative apron behind it.
+                Assert.IsFalse(ground.Any(g => g.center.x > 120f && g.center.x < 160f), "no decorative ground in the boss arena");
                 foreach (var m in props)
                 {
                     Bounds b = m.GetComponent<Renderer>().bounds;
@@ -592,6 +594,34 @@ namespace Unit404.Integrante4.Tests
             var door = (Transform)screen.GetType().GetField("arenaDoor").GetValue(screen);
             Assert.That(door.position.x, Is.InRange(120f, 160f), "arena door at the start of zone 4");
             Assert.AreEqual(2, ((Transform[])screen.GetType().GetField("checkpoints").GetValue(screen)).Length, "both checkpoints wired");
+        }
+
+        // ODD S34 / S36 / T36: the fall screen is a full-screen card in the culture's palette, and the pause
+        // menu knows it, so Esc does not open the pause panel under it.
+        [TestCase("Nivel1_Mesopotamia", 1)]
+        [TestCase("Nivel2_Egipto", 2)]
+        [TestCase("Nivel3_Grecia", 3)]
+        [TestCase("Nivel4_China", 4)]
+        public void Level_FallScreenIsAFullCultureScreenAndBlocksPause(string sceneName, int level)
+        {
+            Open(sceneName);
+            var screen = Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).Single(m => m.GetType().Name == "FallScreen");
+            var panel = (GameObject)screen.GetType().GetField("panel").GetValue(screen);
+            var rt = panel.GetComponent<RectTransform>();
+            Assert.AreEqual(Vector2.zero, rt.anchorMin, "stretches over the whole view");
+            Assert.AreEqual(Vector2.one, rt.anchorMax, "stretches over the whole view");
+            var bg = panel.GetComponent<UnityEngine.UI.Image>();
+            Assert.IsTrue(ColorUtility.TryParseHtmlString(Unit404.Integrante4.Core.CulturePalette.FallHex(level), out Color tint));
+            Assert.AreEqual(tint.r, bg.color.r, 0.01f, "culture tint r");
+            Assert.AreEqual(tint.g, bg.color.g, 0.01f, "culture tint g");
+            Assert.AreEqual(tint.b, bg.color.b, 0.01f, "culture tint b");
+            Assert.GreaterOrEqual(bg.color.a, 0.95f, "a screen, not a see-through overlay");
+            var texts = panel.GetComponentsInChildren<UnityEngine.UI.Text>(true).Select(t => t.text).ToArray();
+            string culture = Unit404.Integrante4.Core.CulturePalette.CultureName(level);
+            Assert.IsTrue(texts.Any(t => string.Equals(t, culture, System.StringComparison.OrdinalIgnoreCase)), "culture name on the screen");
+
+            var pause = Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).Single(m => m.GetType().Name == "PauseMenu");
+            Assert.AreSame(screen, pause.GetType().GetField("fallScreen").GetValue(pause), "pause menu wired to the fall screen");
         }
 
         // ODD S19 / T15: on the 8 m path every obstacle row blocks the full width, and a side path next to an
