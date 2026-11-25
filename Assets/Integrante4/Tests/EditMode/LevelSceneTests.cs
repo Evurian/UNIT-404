@@ -552,6 +552,46 @@ namespace Unit404.Integrante4.Tests
                 }
         }
 
+        // ODD S39 / T40: no void around the level: a culture ground reaches the horizon below the fall zone (seen, never
+        // walked on: no collider, so S18 holds), and the sky's lower half matches the haze so the horizon has no band.
+        [TestCase("Nivel1_Mesopotamia")]
+        [TestCase("Nivel2_Egipto")]
+        [TestCase("Nivel3_Grecia")]
+        [TestCase("Nivel4_China")]
+        public void Level_HasGroundToTheHorizonAndASeamlessSky(string sceneName)
+        {
+            Open(sceneName);
+            var ground = GameObject.Find("Terreno");
+            Assert.IsNotNull(ground, "Terreno");
+            Assert.AreEqual(0, ground.GetComponentsInChildren<Collider>().Length, "ground is scenery only");
+            Bounds g = ground.GetComponent<Renderer>().bounds;
+            var solids = Solids();
+            Assert.LessOrEqual(g.min.x, solids.Min(b => b.bounds.min.x) - 300f, "reaches the horizon behind the start");
+            Assert.GreaterOrEqual(g.max.x, solids.Max(b => b.bounds.max.x) + 300f, "reaches the horizon past the end");
+            Assert.LessOrEqual(g.min.z, -300f, "reaches the horizon on the near side");
+            Assert.GreaterOrEqual(g.max.z, 300f, "reaches the horizon on the far side");
+            Assert.Less(g.max.y, GameObject.Find("ZonaCaida").GetComponent<Collider>().bounds.max.y, "below the fall zone top: never reached");
+            // the sky is our own vertical gradient (lat-long): haze at and under the horizon, culture blue at the zenith,
+            // with no warmer or greener band in between (the procedural sky drew a yellow-green band in Egipto/Grecia).
+            var tex = RenderSettings.skybox.mainTexture as Texture2D;
+            Assert.IsNotNull(tex, "gradient sky texture");
+            Color fog = RenderSettings.fogColor;
+            foreach (float v in new[] { 0.1f, 0.3f, 0.5f })
+            {
+                Color c = tex.GetPixelBilinear(0.5f, v);
+                Assert.AreEqual(fog.r, c.r, 0.03f, "haze at v " + v + " (r)");
+                Assert.AreEqual(fog.g, c.g, 0.03f, "haze at v " + v + " (g)");
+                Assert.AreEqual(fog.b, c.b, 0.03f, "haze at v " + v + " (b)");
+            }
+            Color zenith = tex.GetPixelBilinear(0.5f, 0.99f);
+            for (float v = 0.5f; v <= 1f; v += 0.05f)
+            {
+                Color c = tex.GetPixelBilinear(0.5f, v);
+                Assert.LessOrEqual(c.g - Mathf.Max(fog.g, zenith.g), 0.02f, "no green band at v " + v);
+                Assert.LessOrEqual(c.r - Mathf.Max(fog.r, zenith.r), 0.02f, "no warm band at v " + v);
+            }
+        }
+
         // ODD S25 / T25: six invisible solid bounds keep the robot inside the level even if a bug launches it.
         [TestCase("Nivel1_Mesopotamia", false)]
         [TestCase("Nivel2_Egipto", false)]

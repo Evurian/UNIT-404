@@ -399,14 +399,14 @@ public static class LevelSceneBuilder
     // ---- Ambience (ODD S23, T20, T23): lit culture day on the route, the dark Apophis look only in the boss arena ----
     const string VolumeFolder = "Assets/Integrante4/Art/Volumes";
 
-    // Per culture: sky tint, horizon/ground, haze (fog) and sun colour + intensity. Warm, readable daylight of each era.
+    // Per culture: zenith colour of the gradient sky, horizon/ground, haze (fog) and sun colour + intensity. Warm, readable daylight of each era.
     struct DayLook { public Color sky, ground, haze, sun; public float sunIntensity; }
     static readonly DayLook[] Days =
     {
-        new DayLook { sky = new Color(0.62f, 0.55f, 0.45f), ground = new Color(0.55f, 0.45f, 0.32f), haze = new Color(0.86f, 0.78f, 0.62f), sun = new Color(1f, 0.88f, 0.7f), sunIntensity = 1.35f },  // Mesopotamia: dusty river plain
-        new DayLook { sky = new Color(0.42f, 0.55f, 0.78f), ground = new Color(0.62f, 0.5f, 0.32f), haze = new Color(0.88f, 0.8f, 0.64f), sun = new Color(1f, 0.9f, 0.72f), sunIntensity = 1.45f },     // Egipto: clear sky, desert sand
-        new DayLook { sky = new Color(0.35f, 0.55f, 0.85f), ground = new Color(0.45f, 0.5f, 0.4f), haze = new Color(0.75f, 0.85f, 0.95f), sun = new Color(1f, 0.97f, 0.9f), sunIntensity = 1.3f },      // Grecia: Mediterranean blue
-        new DayLook { sky = new Color(0.6f, 0.62f, 0.6f), ground = new Color(0.55f, 0.5f, 0.38f), haze = new Color(0.84f, 0.8f, 0.66f), sun = new Color(1f, 0.9f, 0.78f), sunIntensity = 1.2f },       // China: loess haze
+        new DayLook { sky = new Color(0.40f, 0.55f, 0.72f), ground = new Color(0.55f, 0.45f, 0.32f), haze = new Color(0.86f, 0.78f, 0.62f), sun = new Color(1f, 0.88f, 0.7f), sunIntensity = 1.35f },  // Mesopotamia: dusty river plain
+        new DayLook { sky = new Color(0.24f, 0.45f, 0.76f), ground = new Color(0.62f, 0.5f, 0.32f), haze = new Color(0.88f, 0.8f, 0.64f), sun = new Color(1f, 0.9f, 0.72f), sunIntensity = 1.45f },     // Egipto: clear sky, desert sand
+        new DayLook { sky = new Color(0.20f, 0.44f, 0.82f), ground = new Color(0.45f, 0.5f, 0.4f), haze = new Color(0.75f, 0.85f, 0.95f), sun = new Color(1f, 0.97f, 0.9f), sunIntensity = 1.3f },      // Grecia: Mediterranean blue
+        new DayLook { sky = new Color(0.44f, 0.57f, 0.68f), ground = new Color(0.55f, 0.5f, 0.38f), haze = new Color(0.84f, 0.8f, 0.66f), sun = new Color(1f, 0.9f, 0.78f), sunIntensity = 1.2f },       // China: loess haze
     };
 
     static void CultureDayLook(int level, float depth)
@@ -479,21 +479,34 @@ public static class LevelSceneBuilder
         ambience.bossAmbient = Color.Lerp(new Color(0.03f, 0.03f, 0.04f), accent, 0.06f);
     }
 
+    // Culture sky (ODD S39, T40): our own vertical gradient on Skybox/Panoramic (lat-long), haze from the horizon down,
+    // easing into the culture's blue at the zenith. Replaces Skybox/Procedural, whose scattering drew a yellow-green band
+    // over the horizon with the saturated Egipto/Grecia tints.
     static Material SkyMaterial(int level, DayLook day)
     {
         if (!AssetDatabase.IsValidFolder(VolumeFolder)) AssetDatabase.CreateFolder("Assets/Integrante4/Art", "Volumes");
-        string path = VolumeFolder + "/Nivel" + level + "_Cielo.mat";
-        var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
-        if (mat == null)
+        string path = VolumeFolder + "/Nivel" + level + "_Cielo.mat", texPath = VolumeFolder + "/Nivel" + level + "_Cielo_Degradado.asset";
+        const int h = 256;
+        var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(texPath); // reused so its GUID (and the material) stay stable
+        bool created = tex == null;
+        if (created) tex = new Texture2D(4, h, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, name = "Nivel" + level + "_Cielo_Degradado" };
+        for (int y = 0; y < h; y++)
         {
-            mat = new Material(Shader.Find("Skybox/Procedural"));
-            AssetDatabase.CreateAsset(mat, path);
+            float v = (y + 0.5f) / h, t = Mathf.Clamp01((v - 0.5f) * 2f); // 0 at the horizon, 1 at the zenith
+            Color c = Color.Lerp(day.haze, day.sky, Mathf.SmoothStep(0f, 1f, Mathf.Pow(t, 0.55f)));
+            for (int x = 0; x < 4; x++) tex.SetPixel(x, y, c);
         }
-        mat.SetColor("_SkyTint", day.sky);
-        mat.SetColor("_GroundColor", day.ground);
-        mat.SetFloat("_AtmosphereThickness", 1.1f);
-        mat.SetFloat("_Exposure", 1.25f);
-        mat.SetFloat("_SunSize", 0.035f);
+        tex.Apply();
+        if (created) AssetDatabase.CreateAsset(tex, texPath); else EditorUtility.SetDirty(tex);
+
+        var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+        var shader = Shader.Find("Skybox/Panoramic");
+        if (mat == null) { mat = new Material(shader); AssetDatabase.CreateAsset(mat, path); }
+        else mat.shader = shader;
+        mat.mainTexture = tex;
+        mat.SetFloat("_Mapping", 1f);   // latitude-longitude layout
+        mat.SetFloat("_ImageType", 0f); // 360 degrees
+        mat.SetFloat("_Exposure", 1f);
         EditorUtility.SetDirty(mat);
         return mat;
     }
@@ -881,6 +894,7 @@ public static class LevelSceneBuilder
         var root = new GameObject("Paisaje").transform;
         float edge = GameObject.Find("Limites_Derecha").GetComponent<Collider>().bounds.max.z;
         float x0 = levelBounds.min.x - 30f, x1 = levelBounds.max.x + 30f;
+        Terrain(root, level);
         foreach (int side in freeDepth ? new[] { 1, -1 } : new[] { 1 })
             for (int i = 0; i < BackdropLayers.Length; i++)
             {
@@ -902,6 +916,28 @@ public static class LevelSceneBuilder
                     Skin(go, 0, material);
                 }
             }
+    }
+
+    // Ground of the culture out to the horizon (ODD S39, T40): seen between and beyond the backdrop strips instead of
+    // the sky's empty lower half. Under the far strips and the fall zone top, without a collider (never reached, S18).
+    static readonly string[] TerrainHex = { "#B48F5C", "#CDAE78", "#2A64A0", "#5F7A44" }; // river plain, desert, Aegean sea, hills
+    static void Terrain(Transform root, int level)
+    {
+        var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        go.name = "Terreno";
+        go.transform.SetParent(root, false);
+        Object.DestroyImmediate(go.GetComponent<Collider>());
+        float y = Mathf.Min(-BackdropDrop[BackdropDrop.Length - 1] - 0.5f, levelBounds.min.y - 1f);
+        float x0 = levelBounds.min.x - 400f, x1 = levelBounds.max.x + 400f;
+        go.transform.localScale = new Vector3(x1 - x0, 0.2f, 900f);
+        go.transform.position = new Vector3((x0 + x1) / 2f, y - 0.1f, 0f);
+        ColorUtility.TryParseHtmlString(TerrainHex[level - 1], out Color c);
+        var m = Mat(c);
+        m.SetFloat("_Smoothness", level == 3 ? 0.6f : 0f);
+        var r = go.GetComponent<MeshRenderer>();
+        r.sharedMaterial = m;
+        r.shadowCastingMode = ShadowCastingMode.Off;
+        go.layer = 0;
     }
 
     static void Skin(GameObject kit, int layer, Material material)
