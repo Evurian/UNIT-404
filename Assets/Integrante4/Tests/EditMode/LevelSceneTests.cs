@@ -1,5 +1,6 @@
 using System.Linq;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -303,6 +304,134 @@ namespace Unit404.Integrante4.Tests
                 Assert.IsFalse(r.sharedMaterial.IsKeywordEnabled("_EMISSION"), r.name + " no glowing cracks on the route");
             }
         }
+
+        // ODD S30 / T29: sharper route materials: 2048 maps, baked occlusion, per-pixel smoothness, anisotropic filtering.
+        // Checks every route kit material the level actually renders (the dark arena keeps its own maps).
+        [TestCase("Nivel1_Mesopotamia", "mesopotamia")]
+        [TestCase("Nivel2_Egipto", "egipto")]
+        [TestCase("Nivel3_Grecia", "grecia")]
+        [TestCase("Nivel4_China", "china")]
+        public void KitMaterials_AreSharp(string sceneName, string culture)
+        {
+            Open(sceneName);
+            var pieces = new[] { "platform", "wall", "stairs", "column", "block" };
+            var checkedNames = new System.Collections.Generic.HashSet<string>();
+            foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            {
+                var mat = r.sharedMaterial;
+                if (mat == null || System.Array.IndexOf(pieces, mat.name.Replace(culture + "_", "")) < 0) continue;
+                if (!checkedNames.Add(mat.name)) continue;
+                string name = mat.name;
+                var albedo = mat.GetTexture("_BaseMap") as Texture2D;
+                Assert.IsNotNull(albedo, name + " albedo");
+                Assert.GreaterOrEqual(albedo.width, 2048, name + " albedo resolution");
+                Assert.GreaterOrEqual(albedo.anisoLevel, 4, name + " anisotropic filtering");
+                Assert.IsNotNull(mat.GetTexture("_OcclusionMap"), name + " occlusion map");
+                Assert.IsTrue(mat.IsKeywordEnabled("_OCCLUSIONMAP"), name + " occlusion keyword");
+                Assert.AreEqual(1f, mat.GetFloat("_SmoothnessTextureChannel"), name + " smoothness from the albedo alpha");
+                Assert.IsTrue(mat.IsKeywordEnabled("_SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A"), name + " smoothness keyword");
+            }
+            Assert.GreaterOrEqual(checkedNames.Count, 2, "route kit materials found: " + string.Join(",", checkedNames));
+        }
+
+        // ODD S28 / T30: every level is dressed with its culture's props. 2.5D: behind the path on a visible decorative
+        // ground, no colliders. 3D: solid props standing on walkable surfaces, clear of pickups and moving obstacles.
+        static readonly System.Collections.Generic.Dictionary<string, string[]> PropKinds = new System.Collections.Generic.Dictionary<string, string[]>
+        {
+            { "mesopotamia", new[] { "hut", "jars", "bricks", "brazier", "lamassu", "palm" } },
+            { "egipto", new[] { "obelisk", "sphinx", "pharaoh", "papyrus", "stele", "palm", "brazier" } },
+            { "grecia", new[] { "amphorae", "kouros", "olive", "altar", "lintel_gr", "brazier" } },
+            { "china", new[] { "lantern", "lion", "bamboo", "banner", "lintel_cn" } },
+        };
+
+        [TestCase("Nivel1_Mesopotamia", "mesopotamia", false)]
+        [TestCase("Nivel2_Egipto", "egipto", false)]
+        [TestCase("Nivel3_Grecia", "grecia", true)]
+        [TestCase("Nivel4_China", "china", true)]
+        public void Level_IsDressedWithCultureProps(string sceneName, string culture, bool is3D)
+        {
+            Open(sceneName);
+            var names = PropKinds[culture].Select(k => culture + "_" + k).ToArray();
+            var props = Object.FindObjectsByType<MeshFilter>(FindObjectsSortMode.None).Where(m => m.sharedMesh != null && names.Contains(m.sharedMesh.name)).ToArray();
+            Assert.GreaterOrEqual(props.Select(m => m.sharedMesh.name).Distinct().Count(), 4, "prop variety");
+            Assert.GreaterOrEqual(props.Length, is3D ? 12 : 24, "props");
+            int[] zones = is3D ? new[] { 0, 1, 3 } : new[] { 0, 1, 2, 4 };
+            foreach (int z in zones)
+                Assert.GreaterOrEqual(props.Count(m => m.GetComponent<Renderer>().bounds.center.x >= z * 40f && m.GetComponent<Renderer>().bounds.center.x < z * 40f + 40f), is3D ? 2 : 3, "props in zone " + (z + 1));
+
+            if (!is3D)
+            {
+                var ground = Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None).Where(r => r.name.StartsWith("Deco_Explanada")).Select(r => r.bounds).ToArray();
+                Assert.Greater(ground.Length, 0, "decorative ground behind the path");
+                foreach (var m in props)
+                {
+                    Bounds b = m.GetComponent<Renderer>().bounds;
+                    Assert.AreEqual(0, m.GetComponentsInParent<Collider>().Length + m.GetComponentsInChildren<Collider>().Length, m.name + " no collider in 2.5D");
+                    Assert.Greater(b.min.z, 1f, m.name + " behind the path wall");
+                    Assert.IsTrue(ground.Any(g => g.min.x <= b.center.x && g.max.x >= b.center.x && g.min.z <= b.center.z && g.max.z >= b.center.z && Mathf.Abs(g.max.y - b.min.y) < 0.05f),
+                        m.name + " stands on the decorative ground: " + b);
+                }
+                return;
+            }
+
+            var solids = Solids();
+            var triggers = Object.FindObjectsByType<Collider>(FindObjectsSortMode.None).Where(c => c.isTrigger).ToArray();
+            var sweeps = Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).Where(m => m.GetType().Name == "MovingObstacle").Select(m =>
+            {
+                Bounds s = m.GetComponent<Collider>().bounds;
+                s.Encapsulate(s.center + (Vector3)m.GetType().GetField("travel").GetValue(m));
+                s.Expand(0.2f);
+                return s;
+            }).ToArray();
+            foreach (var m in props)
+            {
+                string hostName = m.gameObject.name.Substring("Kit_".Length);
+                var host = m.transform.parent.Find(hostName);
+                Assert.IsNotNull(host, m.name + " host");
+                var box = host.GetComponent<BoxCollider>();
+                Assert.IsNotNull(box, host.name + " solid prop");
+                Assert.IsFalse(box.isTrigger, host.name + " solid prop");
+                Bounds hb = box.bounds;
+                Assert.IsTrue(solids.Any(s => s != box && Mathf.Abs(s.bounds.max.y - hb.min.y) < 0.05f && s.bounds.min.x <= hb.center.x && s.bounds.max.x >= hb.center.x && s.bounds.min.z < hb.max.z && s.bounds.max.z > hb.min.z),
+                    host.name + " stands on a walkable surface: " + hb);
+                Bounds inner = hb;
+                inner.Expand(-0.05f);
+                foreach (var t in triggers) Assert.IsFalse(inner.Intersects(t.bounds), host.name + " overlaps " + t.name);
+                foreach (var s in sweeps) Assert.IsFalse(inner.Intersects(s), host.name + " stands in the path of a moving obstacle");
+            }
+        }
+
+        // ODD S29 / T31: the 3D corridors have a rhythm of gates: a pillar or statue on each side of the 8 m path and, in
+        // most of them, a guard or obstacle in the middle, with a playable lane on each side.
+        [TestCase("Nivel3_Grecia")]
+        [TestCase("Nivel4_China")]
+        public void Level3And4_HaveCorridorGates(string sceneName)
+        {
+            Open(sceneName);
+            var hosts = Solids().Where(b => System.Text.RegularExpressions.Regex.IsMatch(b.name, @"^Puerta\d+_[ID]_")).ToArray();
+            var gates = hosts.GroupBy(b => b.name.Substring(0, b.name.IndexOf('_'))).ToArray();
+            Assert.GreaterOrEqual(gates.Length, 4, "gates");
+            var middles = GameObject.FindGameObjectsWithTag("Observador").Concat(GameObject.FindGameObjectsWithTag("Obstaculo")).Select(g => g.GetComponent<Collider>().bounds).ToArray();
+            int guarded = 0;
+            foreach (var g in gates)
+            {
+                var left = g.Single(b => b.name.Contains("_I_")).bounds;
+                var right = g.Single(b => b.name.Contains("_D_")).bounds;
+                Assert.AreEqual(0f, left.center.z + right.center.z, 0.1f, g.Key + " pillars mirrored across the path");
+                Assert.AreEqual(left.center.x, right.center.x, 0.1f, g.Key + " pillars face each other");
+                Assert.GreaterOrEqual(right.center.z, 2.5f, g.Key + " pillars on the path edges");
+                Assert.IsTrue(Kit(g.First().gameObject) != null, g.Key + " pillars wear a kit piece");
+                var mid = middles.Where(b => Mathf.Abs(b.center.x - left.center.x) < 1.5f && Mathf.Abs(b.center.z) < 1.5f).ToArray();
+                if (mid.Length == 0) continue;
+                guarded++;
+                Bounds m = mid[0];
+                Assert.GreaterOrEqual(right.min.z - m.max.z, 1.5f, g.Key + " playable lane on the right");
+                Assert.GreaterOrEqual(m.min.z - left.max.z, 1.5f, g.Key + " playable lane on the left");
+            }
+            Assert.GreaterOrEqual(guarded, 3, "gates with a guard or obstacle in the middle");
+        }
+
+        static Transform Kit(GameObject host) => host.transform.parent.Find("Kit_" + host.name);
 
         // ODD S23 (a, b, d) / T20: lit culture day on the route; entering the arena switches to the dark look, in the culture accent.
         [TestCase("Nivel1_Mesopotamia", 1)]

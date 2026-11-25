@@ -176,6 +176,22 @@ public static class LevelSceneBuilder
 
         Glyphs(root, new[] { 10f, 26f, 46f, 70f, 94f, 112f, 136f, 168f }, new[] { 3f, 5f, 2f, 7f, 8f, 9f, 11.5f, 11.5f }, "Inscripcion");
         SidePath(root, "Agora", 60f, 0f, 9f); SidePath(root, "Ladera", 100f, 4f, -9f); SidePath(root, "Templo", 140f, 9f, 9f);
+
+        // Culture dressing (ODD S28-S29, T30-T31): a rhythm of gates along the corridor, props on the path edges and the
+        // side paths. Nothing on the Ladera, where logs and columns roll across the whole width.
+        Gate(root, 1, 8f, 0f, "kouros");                                   // harbour: statues greet the robot
+        Prop(root, "amphorae", 4f, 0f, -3.3f); Prop(root, "amphorae", 5.5f, 0f, 3.3f); Prop(root, "brazier", 11f, 0f, -3.4f);
+        Gate(root, 2, 46f, 0f, "column", "lintel_gr", "Hoplita_3");        // propylaea into the agora
+        Gate(root, 3, 52f, 0f, "kouros", null, null);                      // frames Hoplita_1 (x 52)
+        Prop(root, "altar", 59.5f, 0f, -3.2f); Prop(root, "amphorae", 56f, 0f, 3.3f); Prop(root, "amphorae", 62.5f, 0f, -3.3f);
+        Gate(root, 4, 66f, 0f, "kouros", null, null);                      // frames Hoplita_2 (x 66)
+        Gate(root, 5, 72.5f, 0f, "column", "lintel_gr", "Hoplita_4");
+        Prop(root, "olive", 54.5f, 0f, 10.4f); Prop(root, "amphorae", 65.5f, 0f, 10.8f);   // agora side path
+        Prop(root, "brazier", 127f, 10f, -3.4f); Prop(root, "brazier", 127f, 10f, 3.4f);   // arena: accent fire
+        Prop(root, "brazier", 156f, 10f, -3.4f); Prop(root, "brazier", 156f, 10f, 3.4f);
+        Prop(root, "olive", 134.5f, 9f, 10.4f); Prop(root, "brazier", 146f, 9f, 10.8f);    // temple side path
+        Gate(root, 6, 170f, 10f, "column", "lintel_gr", "Hoplita_5");      // altar precinct (clear of Inscripcion_8 at x 168)
+        Prop(root, "altar", 177f, 10f, -3.2f); Prop(root, "kouros", 177f, 10f, 3.35f);
         Finish(scene, new Vector3(2f, 2f, 0f), "Nivel3_Grecia", true);
     }
 
@@ -225,12 +241,28 @@ public static class LevelSceneBuilder
 
         Glyphs(root, new[] { 10f, 30f, 48f, 72f, 96f, 114f, 138f, 166f }, new[] { 4f, 6f, 5f, 6f, 9f, 9f, 8f, 7f }, "TiraBambu");
         SidePath(root, "Torre", 60f, 0f, -9f); SidePath(root, "Adarve", 100f, 5f, 9f); SidePath(root, "Tramo", 140f, 5f, -9f);
+
+        // Culture dressing (ODD S28-S29, T30-T31): guardian lions, paifang gates with crossbowmen, lanterns and banners.
+        // Nothing on the wall walk, where the cart rows run across the whole width.
+        Gate(root, 1, 8f, 0f, "lion");
+        Prop(root, "lantern", 15f, 0f, -3.3f); Prop(root, "lantern", 15f, 0f, 3.3f);
+        Gate(root, 2, 20f, 0f, "column", "lintel_cn", "Ballestero_3");    // paifang at the mountain pass
+        Prop(root, "bamboo", 33f, 0f, -3f); Prop(root, "banner", 35.5f, 0f, 3.6f);
+        Gate(root, 3, 44f, 0f, "lion");
+        Prop(root, "banner", 46.5f, 0f, -3.6f); Prop(root, "lantern", 56f, 0f, 3.3f); Prop(root, "lantern", 64f, 0f, -3.3f);
+        Gate(root, 4, 60f, 0f, "column", "lintel_cn", "Ballestero_4");    // paifang between the towers
+        Prop(root, "banner", 75f, 0f, 3.6f);
+        Prop(root, "lantern", 54f, 0f, -11f); Prop(root, "bamboo", 66f, 0f, -10.8f);       // tower side path
+        Gate(root, 5, 133f, 6f, "lantern", null, "Ballestero_5");          // arena: accent lamps (clear of the x 126 fragment)
+        Gate(root, 6, 155f, 6f, "lantern");
+        Prop(root, "lion", 134f, 5f, -11f); Prop(root, "lantern", 146f, 5f, -11f);         // wide-stretch side path
         Finish(scene, new Vector3(2f, 2f, 0f), "Nivel4_China", true);
     }
 
     // ---------------- helpers ----------------
     static Scene NewLevel(string name, Color sky)
     {
+        propCount = 0;
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
         var cam = Camera.main;
         cam.clearFlags = CameraClearFlags.SolidColor;
@@ -263,6 +295,7 @@ public static class LevelSceneBuilder
 
         PlayBounds(freeDepth);
         ApplyKit(name[5] - '0');
+        if (!freeDepth) Dress25D(name[5] - '0');
         ApplyElements(name[5] - '0', freeDepth);
         Backdrop(name[5] - '0', freeDepth);
         ApplyPalette(name[5] - '0');
@@ -569,6 +602,7 @@ public static class LevelSceneBuilder
     // Nominal size (Unity axes: width, height, depth) of each Blender kit piece, see .claude/skills/unit404-niveles-blender/scripts/kits.py
     static Vector3 NominalSize(string piece)
     {
+        if (PropSizes.TryGetValue(piece, out Vector3 prop)) return prop;
         switch (piece)
         {
             case "column": return new Vector3(1.4f, 6f, 1.4f);
@@ -583,11 +617,27 @@ public static class LevelSceneBuilder
         }
     }
 
+    // Culture props (ODD T30-T31), base-centred, facing -Z: keep in sync with props.py NOMINAL (width, height, depth).
+    static readonly System.Collections.Generic.Dictionary<string, Vector3> PropSizes = new System.Collections.Generic.Dictionary<string, Vector3>
+    {
+        { "hut", new Vector3(4f, 3.2f, 3f) }, { "jars", new Vector3(1.6f, 1.3f, 1.4f) }, { "bricks", new Vector3(1.8f, 1.1f, 1.2f) },
+        { "brazier", new Vector3(1f, 1.4f, 1f) }, { "lamassu", new Vector3(1.4f, 2.6f, 3f) }, { "palm", new Vector3(3.5f, 6.5f, 3.5f) },
+        { "obelisk", new Vector3(1.2f, 6f, 1.2f) }, { "sphinx", new Vector3(1.6f, 2f, 3.6f) }, { "pharaoh", new Vector3(1.4f, 3.2f, 1.8f) },
+        { "papyrus", new Vector3(1.8f, 2.2f, 1.8f) }, { "stele", new Vector3(3f, 2.8f, 0.6f) },
+        { "amphorae", new Vector3(1.4f, 1.3f, 1.2f) }, { "kouros", new Vector3(1.1f, 3.4f, 1.1f) }, { "olive", new Vector3(3f, 3.8f, 3f) },
+        { "altar", new Vector3(2f, 1.3f, 1.3f) }, { "lintel_gr", new Vector3(8.4f, 1.4f, 1.4f) },
+        { "lantern", new Vector3(1.1f, 2.4f, 1.25f) }, { "lion", new Vector3(1.3f, 2.2f, 1.9f) }, { "bamboo", new Vector3(1.8f, 4.8f, 1.8f) },
+        { "banner", new Vector3(1.3f, 5.1f, 0.4f) }, { "lintel_cn", new Vector3(9f, 1.6f, 1.6f) },
+    };
+
     // Zone 4 of every level (x 120-160) is the boss arena: dark ground and ambience (ODD S23).
     public const float ArenaStartX = 120f, ArenaEndX = 160f;
 
     static string KitPiece(string blockName)
     {
+        // culture props (T30) and corridor gates (T31): "Prop_<id>_<kind>", "Puerta<N>_<role>_<kind>"
+        if (blockName.StartsWith("Prop_") || blockName.StartsWith("Puerta"))
+            return blockName.Substring(blockName.IndexOf('_', blockName.IndexOf('_') + 1) + 1);
         if (blockName.StartsWith("Columna_")) return "column";
         if (blockName.StartsWith("Terraza")) return "stairs";
         if (blockName.StartsWith("Bloque")) return "block";
@@ -621,9 +671,19 @@ public static class LevelSceneBuilder
         var albedo = LoadMap(dir + piece + "_albedo.png", false);
         var normal = LoadMap(dir + piece + "_normal.png", true);
         var emission = LoadMap(dir + piece + "_emission.png", false);
+        var occlusion = LoadMap(dir + piece + "_occlusion.png", false, linear: true);
         mat.color = albedo != null ? Color.white : fallback;
         mat.SetTexture("_BaseMap", albedo);
-        mat.SetFloat("_Smoothness", 0.15f);
+        // T29 (ODD S30): route kit maps carry smoothness (1 - roughness) in the albedo alpha; other maps are opaque
+        var albedoImporter = AssetImporter.GetAtPath(dir + piece + "_albedo.png") as TextureImporter;
+        bool smoothInAlpha = albedoImporter != null && albedoImporter.DoesSourceTextureHaveAlpha();
+        mat.SetFloat("_Smoothness", smoothInAlpha ? 1f : 0.15f);
+        mat.SetFloat("_SmoothnessTextureChannel", smoothInAlpha ? 1f : 0f);
+        if (smoothInAlpha) mat.EnableKeyword("_SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A");
+        else mat.DisableKeyword("_SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A");
+        mat.SetTexture("_OcclusionMap", occlusion);
+        mat.SetFloat("_OcclusionStrength", 1f);
+        if (occlusion != null) mat.EnableKeyword("_OCCLUSIONMAP"); else mat.DisableKeyword("_OCCLUSIONMAP");
         if (normal != null) { mat.SetTexture("_BumpMap", normal); mat.EnableKeyword("_NORMALMAP"); }
         if (emission != null)
         {
@@ -644,12 +704,23 @@ public static class LevelSceneBuilder
         return mat;
     }
 
-    static Texture2D LoadMap(string path, bool isNormal)
+    static Texture2D LoadMap(string path, bool isNormal, bool linear = false)
     {
         var importer = AssetImporter.GetAtPath(path) as TextureImporter;
         if (importer == null) return null;
         var type = isNormal ? TextureImporterType.NormalMap : TextureImporterType.Default;
-        if (importer.textureType != type) { importer.textureType = type; importer.SaveAndReimport(); }
+        bool srgb = !isNormal && !linear;
+        // T29 (ODD S30): keep the 2048 bakes and filter them anisotropically, so floors stay crisp at grazing angles
+        if (importer.textureType != type || importer.sRGBTexture != srgb || importer.maxTextureSize < 2048 || importer.anisoLevel < 8
+            || importer.alphaIsTransparency)
+        {
+            importer.textureType = type;
+            importer.sRGBTexture = srgb;
+            importer.maxTextureSize = Mathf.Max(importer.maxTextureSize, 2048);
+            importer.anisoLevel = 8;
+            importer.alphaIsTransparency = false; // the albedo alpha is smoothness, not transparency
+            importer.SaveAndReimport();
+        }
         return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
     }
 
@@ -852,6 +923,110 @@ public static class LevelSceneBuilder
             for (int i = 0; i < mats.Length; i++) mats[i] = material;
             kr.sharedMaterials = mats;
         }
+    }
+
+    // ---- Culture props (ODD S28, T30) ----
+    static int propCount;
+
+    // 3D worlds: a solid prop standing on a walkable floor (top = floorTop); the grey block is its collider (ApplyKit skins
+    // it). Props on the far side face -Z, those on the near side are turned round, so both look at the path.
+    static void Prop(Transform p, string kind, float x, float floorTop, float z)
+    {
+        Vector3 size = PropSizes[kind];
+        var go = Make(p, "Prop_" + (++propCount) + "_" + kind, PrimitiveType.Cube, new Vector3(x, floorTop + size.y / 2f, z), size, Wall, "Entorno");
+        if (z < 0f) go.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+    }
+
+    // ODD S29, T31: corridor gate on the 8 m path: a pillar or statue on each edge facing the centre, an optional lintel
+    // across the top and an optional guard (Observador placeholder, Integrante 2 owns the logic) in the middle.
+    static void Gate(Transform p, int n, float x, float floorTop, string pillar, string lintel = null, string guard = null)
+    {
+        Vector3 ps = pillar == "column" ? NominalSize("column") : PropSizes[pillar];
+        float z = pathDepth / 2f - ps.z / 2f - 0.05f;
+        foreach (int side in new[] { -1, 1 })
+        {
+            var go = Make(p, "Puerta" + n + "_" + (side < 0 ? "I" : "D") + "_" + pillar, PrimitiveType.Cube, new Vector3(x, floorTop + ps.y / 2f, side * z), ps, Wall, "Entorno");
+            if (side < 0) go.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+        }
+        if (lintel != null)
+        {
+            Vector3 ls = PropSizes[lintel];
+            var top = Make(p, "Puerta" + n + "_Dintel_" + lintel, PrimitiveType.Cube, new Vector3(x, floorTop + ps.y + ls.y / 2f, 0f), ls, Wall, "Entorno");
+            top.transform.rotation = Quaternion.Euler(0f, 90f, 0f); // spans the path depth
+        }
+        if (guard != null) Guard(p, guard, x, floorTop + 1.5f);
+    }
+
+    // 2.5D levels: a decorative ground strip behind every main floor (z 1-5, same top, no collider: the player is held at
+    // z = 0 by the side bounds) dressed with culture props. The boss arena keeps its ground but no props.
+    const float ApronZ0 = 1f, ApronDepth = 4f;
+    static readonly string[][] DecoKinds =
+    {
+        new[] { "hut", "jars", "bricks", "brazier", "lamassu", "palm", "palm", "jars", "hut" },
+        new[] { "obelisk", "sphinx", "pharaoh", "papyrus", "stele", "palm", "papyrus", "brazier", "palm" },
+    };
+
+    static void Dress25D(int level)
+    {
+        string culture = Cultures[level - 1], prefix = culture.ToLowerInvariant();
+        var root = new GameObject("Decorado").transform;
+        int entorno = Layer("Entorno");
+        var rnd = new System.Random(level * 7919);
+        var seen = new System.Collections.Generic.HashSet<string>();
+        foreach (Transform t in GameObject.Find("Nivel").transform)
+        {
+            var c = t.GetComponent<BoxCollider>();
+            if (c == null || c.isTrigger || t.gameObject.layer != entorno || !t.CompareTag("Untagged")) continue;
+            if (t.rotation != Quaternion.identity || Mathf.Abs(t.localScale.z - pathDepth) > 0.01f || t.localScale.y > 2.01f || t.localScale.x < 10f) continue;
+            Bounds b = c.bounds;
+            if (!seen.Add(b.min.x.ToString("0.0") + "/" + b.max.x.ToString("0.0") + "/" + b.max.y.ToString("0.0"))) continue; // overlapping floors
+            Apron(root, level, b, t.name);
+            float x = b.min.x + 1f;
+            string[] kinds = DecoKinds[level - 1];
+            while (true)
+            {
+                string kind = kinds[rnd.Next(kinds.Length)];
+                Vector3 size = PropSizes[kind] * Mathf.Lerp(0.9f, 1.15f, (float)rnd.NextDouble());
+                if (x + size.x > b.max.x - 0.5f) break;
+                float cx = x + size.x / 2f;
+                if (cx > ArenaStartX && cx < ArenaEndX) { x = cx + size.x / 2f + 2f; continue; }
+                float zc = ApronZ0 + 0.5f + size.z / 2f + (float)rnd.NextDouble() * Mathf.Max(0f, ApronDepth - 1f - size.z);
+                Deco(root, culture, prefix, kind, new Vector3(cx, b.max.y, zc), size, Mathf.Lerp(-6f, 6f, (float)rnd.NextDouble()));
+                x = cx + size.x / 2f + Mathf.Lerp(0.6f, 3f, (float)rnd.NextDouble());
+            }
+        }
+    }
+
+    static void Apron(Transform root, int level, Bounds floor, string label)
+    {
+        string culture = Cultures[level - 1], prefix = culture.ToLowerInvariant();
+        int nx = Mathf.Max(1, Mathf.RoundToInt(floor.size.x / 4f));
+        float w = floor.size.x / nx;
+        for (int i = 0; i < nx; i++)
+        {
+            float cx = floor.min.x + w * (i + 0.5f);
+            bool arena = cx > ArenaStartX && cx < ArenaEndX, basalt = arena && level == 1; // same ground rule as ApplyKit (ODD S23 c)
+            string folder = basalt ? "Arena" : culture, mesh = basalt ? "arena_platform" : prefix + "_platform";
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ArtFolder + folder + "/" + mesh + ".fbx");
+            if (prefab == null) { Debug.LogWarning("Kit piece missing: " + mesh); return; }
+            var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab, root);
+            go.name = "Deco_Explanada_" + label;
+            go.transform.localScale = new Vector3(w / 4f, 1f, ApronDepth / 4f);
+            go.transform.position = new Vector3(cx, floor.max.y - 1f, ApronZ0 + ApronDepth / 2f);
+            Skin(go, 0, KitMaterial(folder, arena && !basalt ? prefix + "_arena_platform" : mesh, Color.gray));
+        }
+    }
+
+    static void Deco(Transform root, string culture, string prefix, string kind, Vector3 basePos, Vector3 size, float yaw)
+    {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ArtFolder + culture + "/" + prefix + "_" + kind + ".fbx");
+        if (prefab == null) { Debug.LogWarning("Prop missing: " + prefix + "_" + kind); return; }
+        var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab, root);
+        go.name = "Deco_" + kind + "_" + (++propCount);
+        Vector3 nominal = PropSizes[kind];
+        go.transform.localScale = new Vector3(size.x / nominal.x, size.y / nominal.y, size.z / nominal.z);
+        go.transform.SetPositionAndRotation(basePos, Quaternion.Euler(0f, yaw, 0f));
+        Skin(go, 0, KitMaterial(culture, prefix + "_" + kind, Color.gray));
     }
 
     // Safe fallbacks: a missing layer maps to Default, a missing tag is skipped with a warning.
