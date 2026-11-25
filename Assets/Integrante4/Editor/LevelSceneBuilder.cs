@@ -56,7 +56,6 @@ public static class LevelSceneBuilder
         for (int i = 0; i < 5; i++) Solid(root, "Terraza_" + (i + 1), 84f + i * 7f, 1f + i * 2f, 6f, 2f);
         Floor(root, "Suelo_Escalinata", 80f, 120f, 0f);
         Wind(root, "Viento_1", 92f, 7f); Wind(root, "Viento_2", 106f, 7f);
-        Smoke(root, "Incienso_1", 96f, 4f); Smoke(root, "Incienso_2", 110f, 8f);
         Pickups(root, "Fragmento", 86f, 118f, 3, 8f);
         Ring(root, 100f, 9f);
         Tagged(root, "Estaca_1", "Obstaculo", PrimitiveType.Cube, new Vector3(60f, 1f, 0f), new Vector3(0.6f, 2f, 0.6f), false, new Color(0.6f, 0.25f, 0.2f));
@@ -217,8 +216,8 @@ public static class LevelSceneBuilder
         Pickups(root, "Fragmento", 42f, 78f, 4, 5f);
         Tagged(root, "Checkpoint_1", "Checkpoint", PrimitiveType.Cube, new Vector3(78f, 2f, 0f), new Vector3(1f, 4f, 1f), true);
 
-        // 3. Adarve de la muralla (x 80-120): a ramp up the wall (0 -> 6, ODD S40), then the wall walk with carts and
-        // dust storm. The wall is a solid body down to the ground, no void under the walkway.
+        // 3. Adarve de la muralla (x 80-120): a ramp up the wall (0 -> 6, ODD S40), then the wall walk with carts.
+        // The wall is a solid body down to the ground, no void under the walkway.
         Rampa(root, "Rampa_Muralla", 86f, 0f, 12f, 6f);
         RampBody(root, "Muro_Rampa", 86f, 0f, 12f, 6f, 4);
         Walk(root, "Adarve", 106f, 5f, 28f, 2f);
@@ -227,7 +226,6 @@ public static class LevelSceneBuilder
         for (int i = 0; i < 3; i++) CartRow(root, "Carreta_" + (i + 1), 95f + i * 9f, 6f, -pathDepth / 2f, pathDepth / 2f, 3);
         // The side path beside the wall walk would skirt the carts: it gets its own row (top 5, z 6..12, x 93-107).
         CartRow(root, "Carreta_Lateral_Adarve", 98f, 5f, 6f, 12f, 2);
-        Tagged(root, "TormentaPolvo", "Contaminacion", PrimitiveType.Cube, new Vector3(108f, 8f, 0f), new Vector3(8f, 6f, 6f), true, new Color(0.8f, 0.7f, 0.3f));
         Pickups(root, "Fragmento", 84f, 118f, 3, 8f);
 
         // 4. Tramo ancho entre torres (x 120-160): second checkpoint and Chiyou arena
@@ -862,15 +860,6 @@ public static class LevelSceneBuilder
             go.GetComponent<MeshRenderer>().enabled = false;
         }
 
-        // Pollution hazards (incense, dust storm): a cloud of soft puffs filling the trigger instead of a box (ODD S38).
-        foreach (var hazard in GameObject.FindGameObjectsWithTag("Contaminacion"))
-        {
-            var r = hazard.GetComponent<Renderer>();
-            if (r == null) continue;
-            HazardCloud(hazard.transform, r.sharedMaterial.color, hazard.name.StartsWith("Tormenta"));
-            r.enabled = false;
-        }
-
         // Portal gate over the arrival pad: decoration only, spans the path (X in 2.5D, Z in the 3D worlds).
         var pad = GameObject.Find("PortalLlegada");
         var archPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(ArtFolder + culture + "/" + prefix + "_arch.fbx");
@@ -1089,94 +1078,6 @@ public static class LevelSceneBuilder
         go.tag = tag;
     }
 
-    // Particle cloud filling the hazard's unit box (the shape scales with the hazard, sizes and speeds do not).
-    // Dust storm: dense ochre puffs swirling sideways. Incense: grey wisps rising slowly.
-    static void HazardCloud(Transform hazard, Color color, bool storm)
-    {
-        var go = new GameObject("Nube");
-        go.transform.SetParent(hazard, false);
-        var ps = go.AddComponent<ParticleSystem>();
-        var main = ps.main;
-        main.loop = true;
-        main.prewarm = true;
-        main.scalingMode = ParticleSystemScalingMode.Shape;
-        main.simulationSpace = ParticleSystemSimulationSpace.World;
-        main.startLifetime = new ParticleSystem.MinMaxCurve(storm ? 3f : 4f, storm ? 5f : 6f);
-        main.startSpeed = 0f;
-        main.startSize = storm ? new ParticleSystem.MinMaxCurve(1.6f, 3.2f) : new ParticleSystem.MinMaxCurve(0.8f, 1.8f);
-        main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
-        main.startColor = new Color(color.r, color.g, color.b, storm ? 0.45f : 0.35f);
-        main.maxParticles = storm ? 400 : 120;
-        var emission = ps.emission;
-        emission.rateOverTime = storm ? 70f : 22f;
-        var shape = ps.shape;
-        shape.shapeType = ParticleSystemShapeType.Box;
-        shape.scale = Vector3.one;
-        var velocity = ps.velocityOverLifetime;
-        velocity.enabled = true;
-        velocity.space = ParticleSystemSimulationSpace.World;
-        velocity.x = storm ? new ParticleSystem.MinMaxCurve(-1.5f, -0.5f) : new ParticleSystem.MinMaxCurve(-0.1f, 0.1f);
-        velocity.y = storm ? new ParticleSystem.MinMaxCurve(-0.2f, 0.3f) : new ParticleSystem.MinMaxCurve(0.25f, 0.6f);
-        velocity.z = new ParticleSystem.MinMaxCurve(-0.2f, 0.2f);
-        var rotation = ps.rotationOverLifetime;
-        rotation.enabled = true;
-        rotation.z = new ParticleSystem.MinMaxCurve(-0.6f, 0.6f);
-        var fade = ps.colorOverLifetime;
-        fade.enabled = true;
-        var gradient = new Gradient();
-        gradient.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
-            new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.25f), new GradientAlphaKey(1f, 0.7f), new GradientAlphaKey(0f, 1f) });
-        fade.color = gradient;
-        var noise = ps.noise;
-        noise.enabled = true;
-        noise.strength = storm ? 0.8f : 0.3f;
-        noise.frequency = 0.3f;
-        var renderer = go.GetComponent<ParticleSystemRenderer>();
-        renderer.sharedMaterial = PuffMaterial();
-        renderer.shadowCastingMode = ShadowCastingMode.Off;
-        renderer.sortingFudge = 10f;
-    }
-
-    // Soft round puff (procedural radial falloff) on URP Particles/Unlit, alpha blended.
-    static Material PuffMaterial()
-    {
-        string path = VolumeFolder + "/Humo.mat", texPath = VolumeFolder + "/Humo_Puff.asset";
-        var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
-        if (mat != null && mat.mainTexture != null) return mat;
-        var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(texPath);
-        if (tex == null)
-        {
-            const int n = 128;
-            tex = new Texture2D(n, n, TextureFormat.RGBA32, true) { wrapMode = TextureWrapMode.Clamp, name = "Humo_Puff" };
-            var noise = new System.Random(404);
-            for (int y = 0; y < n; y++)
-                for (int x = 0; x < n; x++)
-                {
-                    float dx = (x + 0.5f) / n * 2f - 1f, dy = (y + 0.5f) / n * 2f - 1f;
-                    float d = Mathf.Sqrt(dx * dx + dy * dy);
-                    float a = Mathf.Clamp01(1f - d);
-                    a = a * a * (3f - 2f * a) * (0.85f + 0.15f * (float)noise.NextDouble());
-                    tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
-                }
-            tex.Apply();
-            AssetDatabase.CreateAsset(tex, texPath);
-        }
-        bool create = mat == null;
-        if (create) mat = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? Shader.Find("Particles/Standard Unlit"));
-        mat.SetFloat("_Surface", 1f);
-        mat.SetFloat("_Blend", 0f);
-        mat.SetOverrideTag("RenderType", "Transparent");
-        mat.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
-        mat.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
-        mat.SetInt("_ZWrite", 0);
-        mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-        mat.renderQueue = (int)RenderQueue.Transparent;
-        mat.mainTexture = tex;
-        if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
-        if (create) AssetDatabase.CreateAsset(mat, path); else EditorUtility.SetDirty(mat);
-        return mat;
-    }
-
     static Material Mat(Color c)
     {
         var m = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
@@ -1312,8 +1213,6 @@ public static class LevelSceneBuilder
     static void Guard(Transform p, string name, float x, float y)
         => Tagged(p, name, "Observador", PrimitiveType.Capsule, new Vector3(x, y, 0f), new Vector3(1f, 1.5f, 1f), false, new Color(0.8f, 0.2f, 0.2f)).layer = Layer("Enemigo");
 
-    static void Smoke(Transform p, string name, float x, float y)
-        => Tagged(p, name, "Contaminacion", PrimitiveType.Sphere, new Vector3(x, y, 0f), new Vector3(3f, 3f, 1f), true, new Color(0.4f, 0.4f, 0.45f));
 
     static void Wind(Transform p, string name, float x, float y)
     {
