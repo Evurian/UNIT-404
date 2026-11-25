@@ -1,12 +1,13 @@
+using Unit404.Integrante4.Core;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 // Routes every level change through the loading scene ("Carga").
 public static class SceneLoader
 {
-    public const string LoadingScene = "Carga";
-    public const string StartScene = "Inicio";
-    public const string FirstLevel = "Nivel1_Mesopotamia";
+    public const string LoadingScene = SceneFlow.Loading;
+    public const string StartScene = SceneFlow.Start;
+    public static readonly string FirstLevel = SceneFlow.Next("Introduccion");
 
     public static string Target { get; private set; } = FirstLevel;
 

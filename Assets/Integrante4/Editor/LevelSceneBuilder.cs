@@ -13,8 +13,6 @@ public static class LevelSceneBuilder
     const string Folder = "Assets/Integrante4/Scenes/";
     const string HudPath = "Assets/Integrante4/Prefabs/HUD.prefab";
 
-    // Level 4 hands over to the epilogue until levels 5-8 (Integrante 3) are merged.
-    static readonly string[] NextLevel = { "Nivel1_Mesopotamia", "Nivel2_Egipto", "Nivel3_Grecia", "Nivel4_China" };
 
     static readonly Color Ground = new Color(0.45f, 0.45f, 0.47f);
     static readonly Color Wall = new Color(0.58f, 0.52f, 0.46f);
@@ -311,7 +309,8 @@ public static class LevelSceneBuilder
         new GameObject("HudEventSimulator (solo pruebas)").AddComponent<HudEventSimulator>();
         FlowSceneBuilder.AddPauseMenu().fallScreen = Object.FindFirstObjectByType<FallScreen>();
         int level = name[5] - '0';
-        FlowSceneBuilder.AddNarrator(level, level < 4 ? NextLevel[level] : "Despedida");
+        // Level 4 hands over to the epilogue until levels 5-8 (Integrante 3) are merged (SceneFlow, T33).
+        FlowSceneBuilder.AddNarrator(level, Unit404.Integrante4.Core.SceneFlow.Next(name));
 
         EditorSceneManager.SaveScene(scene, Folder + name + ".unity");
     }

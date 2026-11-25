@@ -6,6 +6,36 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Integrante4/Scenes/Inicio.unity
+    guid: 404617dcd7aac9e0fb6268c387b010f1
+  - enabled: 1
+    path: Assets/Integrante4/Scenes/Carga.unity
+    guid: 4fc89fe02ebcfbfc493e72d56d267e40
+  - enabled: 1
+    path: Assets/Integrante4/Scenes/Introduccion.unity
+    guid: 3682c145fd2dcf251934ddac7791b306
+  - enabled: 1
+    path: Assets/Integrante4/Scenes/Nivel1_Mesopotamia.unity
+    guid: 24464316b90e947aab8b8c88768382bd
+  - enabled: 1
+    path: Assets/Integrante4/Scenes/Nivel2_Egipto.unity
+    guid: f4cf26b74a455b1ab86e8b56e1a27ec1
+  - enabled: 1
+    path: Assets/Integrante4/Scenes/Nivel3_Grecia.unity
+    guid: b27bae9da4c9af56d938aa45fe234af0
+  - enabled: 1
+    path: Assets/Integrante4/Scenes/Nivel4_China.unity
+    guid: 7f9e0d87d3b3e89c99aed3972c031906
+  - enabled: 1
+    path: Assets/Integrante4/Scenes/Despedida.unity
+    guid: 9246fc684e055602881c1901609bd55e
+  - enabled: 1
+    path: Assets/Integrante4/Scenes/Creditos.unity
+    guid: 00862c76e5fe0f3adacd7c2fe361e3c6
+  - enabled: 1
+    path: Assets/Integrante4/Scenes/Cierre.unity
+    guid: 4c85aea733b6e8808b11e8f8013d750c
+  - enabled: 0
     path: Assets/Scenes/SampleScene.unity
     guid: 99c9720ab356a0642a771bea13969a05
   m_configObjects:

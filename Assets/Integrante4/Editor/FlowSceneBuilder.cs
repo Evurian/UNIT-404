@@ -18,11 +18,26 @@ public static class FlowSceneBuilder
     {
         BuildStart();
         BuildLoading();
-        BuildStory("Introduccion", StoryScene.Script.Intro, SceneLoader.FirstLevel);
-        BuildStory("Despedida", StoryScene.Script.Epilogue, "Creditos");
-        BuildStory("Creditos", StoryScene.Script.Credits, "Cierre");
-        BuildStory("Cierre", StoryScene.Script.Farewell, SceneLoader.StartScene);
+        BuildStory("Introduccion", StoryScene.Script.Intro);
+        BuildStory("Despedida", StoryScene.Script.Epilogue);
+        BuildStory("Creditos", StoryScene.Script.Credits);
+        BuildStory("Cierre", StoryScene.Script.Farewell);
+        ApplyBuildSettings();
         AssetDatabase.SaveAssets();
+    }
+
+    // Build list = SceneFlow.BuildOrder, Inicio first (ODD S31, T33). Scenes of other members already in the
+    // list stay, disabled, so the build opens on Inicio and only my flow ships from this branch.
+    [MenuItem("UNIT-404/Integrante 4/Conectar escenas (Build Settings)")]
+    public static void ApplyBuildSettings()
+    {
+        var scenes = new System.Collections.Generic.List<EditorBuildSettingsScene>();
+        foreach (string name in SceneFlow.BuildOrder)
+            scenes.Add(new EditorBuildSettingsScene(Folder + name + ".unity", true));
+        foreach (var other in EditorBuildSettings.scenes)
+            if (!scenes.Exists(s => s.path == other.path))
+                scenes.Add(new EditorBuildSettingsScene(other.path, false));
+        EditorBuildSettings.scenes = scenes.ToArray();
     }
 
     public static void BuildStart()
@@ -58,14 +73,14 @@ public static class FlowSceneBuilder
         EditorSceneManager.SaveScene(scene, Folder + "Carga.unity");
     }
 
-    static void BuildStory(string name, StoryScene.Script script, string next)
+    static void BuildStory(string name, StoryScene.Script script)
     {
         var scene = NewScene();
         Canvas canvas = NewCanvas("Canvas");
         Fill(canvas.transform, "Fondo", new Color(0.06f, 0.05f, 0.07f));
         var story = new GameObject("StoryScene").AddComponent<StoryScene>();
         story.script = script;
-        story.nextScene = next;
+        story.nextScene = SceneFlow.Next(name);
         story.text = Label(canvas.transform, "Texto", "", 52, Vector2.zero, new Vector2(1500f, 400f), Parchment);
         Label(canvas.transform, "Ayuda", "Espacio para saltar", 28, new Vector2(0f, -460f), new Vector2(600f, 50f), new Color(1f, 1f, 1f, 0.4f));
         EditorSceneManager.SaveScene(scene, Folder + name + ".unity");
