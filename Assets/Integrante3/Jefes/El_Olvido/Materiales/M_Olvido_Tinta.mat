@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: M_Olvido_Tinta
+  m_Shader: {fileID: 4800000, guid: 6abdda3ee1ec1ee44914562a1ca4119c, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 1
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _GlyphTex:
+        m_Texture: {fileID: 2800000, guid: 74a9c825b6dc74a478b54b730d80b109, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _Dissolve: 0
+    - _EdgeWidth: 0.06
+    - _GlyphCoverage: 0.25
+    - _GlyphCycle: 0.2
+    - _GlyphSize: 0.13
+    - _MeltBase: 0
+    - _MeltFromTop: 0.65
+    - _MeltHeight: 3
+    - _NoiseSize: 1.2
+    - _RimPower: 3.5
+    - _Smoothness: 0.88
+    - _WobbleAmp: 0.012
+    - _WobbleFreq: 3
+    - _WobbleSpeed: 1.6
+    m_Colors:
+    - _BaseColor: {r: 0.012, g: 0.012, b: 0.018, a: 1}
+    - _EdgeColor: {r: 5, g: 3, b: 1.2, a: 1}
+    - _GlyphColor: {r: 3.5, g: 2.2, b: 0.9, a: 1}
+    - _GlyphScroll: {r: 0, g: -0.04, b: 0, a: 0}
+    - _RimColor: {r: 0.17999998, g: 0.19999996, b: 0.31999996, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
