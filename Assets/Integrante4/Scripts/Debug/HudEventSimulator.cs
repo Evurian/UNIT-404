@@ -2,7 +2,8 @@ using UnityEngine;
 
 // Solo para la escena de prueba del Integrante 4: simula los eventos del jugador
 // mientras el prefab de UNIT-404 (Integrante 1) no esta en esta rama.
-// H = golpe, F = gastar 1 de combustible, G = recargar 1, R = reiniciar.
+// H = golpe, F = gastar 1 de combustible, G = recargar 1, R = reiniciar,
+// L = completar el nivel (lo hace el aterrizaje en el portal del robot del Integrante 1).
 public class HudEventSimulator : MonoBehaviour
 {
     // Full HUD extras: N = glifo, M = +20 anomalia, Q = marca de objetivo, 1/2/3 = chip en recarga.
@@ -35,6 +36,7 @@ public class HudEventSimulator : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.F)) { fuel = Mathf.Max(0f, fuel - 1f); Publish(); }
         if (Input.GetKeyDown(KeyCode.G)) { fuel = Mathf.Min(20f, fuel + 1f); Publish(); }
         if (Input.GetKeyDown(KeyCode.R)) { lives = 5; score = 100; fuel = 10f; glyphs = 0; anomaly = 0f; Publish(); }
+        if (Input.GetKeyDown(KeyCode.L)) GameEvents.RaiseLevelCompleted();
         UpdateExtras();
     }
 
