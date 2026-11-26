@@ -46,31 +46,79 @@ public static class FlowSceneBuilder
     static readonly Color Amber = new Color32(0xFF, 0x9A, 0x2E, 0xFF);
     static readonly Color Shade = new Color(0.04f, 0.03f, 0.02f, 0.86f);
 
+    // Inicio (ODD S43/S44, T43): the four cultures rotate behind a left column; everything in the column shares
+    // one left edge (MenuLeft) so title, rule, subtitle, buttons and the culture caption line up.
+    const float MenuLeft = -820f; // 140 px from the left edge of the 1920 x 1080 reference
+    static readonly string[] CultureArt = { "Mesopotamia", "Egipto", "Grecia", "China" };
+
     public static void BuildStart()
     {
         var scene = NewScene();
         Canvas canvas = NewCanvas("Canvas");
-        Backdrop(canvas.transform, "Inicio");
         var menu = new GameObject("StartMenu").AddComponent<StartMenu>();
+        var cycle = new GameObject("BackgroundCycle").AddComponent<BackgroundCycle>();
 
-        // dark column on the left carries the title and the menu over the art
-        RectTransform column = Rect("Columna", canvas.transform, Vector2.zero, new Vector2(860f, 0f));
+        RectTransform stage = Rect("Escenario", canvas.transform, Vector2.zero, Vector2.zero);
+        stage.anchorMin = Vector2.zero; stage.anchorMax = Vector2.one;
+        stage.offsetMin = new Vector2(-60f, -34f); stage.offsetMax = new Vector2(60f, 34f);
+        stage.gameObject.AddComponent<ScreenMotion>();
+        cycle.slides = CultureArt.Select(ScreenArtBuilder.Background).ToArray();
+        cycle.front = StageLayer(stage, "Fondo", cycle.slides[0], 1f);
+        cycle.back = StageLayer(stage, "FondoSiguiente", cycle.slides[1], 0f);
+        cycle.names = CultureArt;
+        cycle.accents = new Color[4];
+        for (int i = 0; i < 4; i++) ColorUtility.TryParseHtmlString(CulturePalette.AccentHex(i + 1), out cycle.accents[i]);
+
+        RectTransform v = Rect("Vineta", canvas.transform, Vector2.zero, Vector2.zero);
+        v.anchorMin = Vector2.zero; v.anchorMax = Vector2.one; v.offsetMin = v.offsetMax = Vector2.zero;
+        var vignette = v.gameObject.AddComponent<Image>();
+        vignette.sprite = UiSkin.Vignette; vignette.raycastTarget = false;
+
+        // shade eased from the left edge into the art: no hard box, no edge line
+        RectTransform column = Rect("Columna", canvas.transform, Vector2.zero, new Vector2(1250f, 0f));
         column.anchorMin = new Vector2(0f, 0f); column.anchorMax = new Vector2(0f, 1f); column.pivot = new Vector2(0f, 0.5f);
         column.anchoredPosition = Vector2.zero;
-        Plain(column.gameObject, new Color(Shade.r, Shade.g, Shade.b, 0.55f));
-        Plain(Edge(column, "Filo", 1f, 3f).gameObject, new Color(Amber.r, Amber.g, Amber.b, 0.7f));
+        var shade = column.gameObject.AddComponent<Image>();
+        shade.sprite = UiSkin.SideShade; shade.raycastTarget = false;
 
-        Tmp(canvas.transform, "Titulo", "UNIT-404", 132, new Vector2(-520f, 250f), new Vector2(820f, 200f), Parchment, TextAlignmentOptions.Left, true)
-            .textWrappingMode = TextWrappingModes.NoWrap;
-        Plain(Rect("Linea", canvas.transform, new Vector2(-720f, 150f), new Vector2(420f, 4f)).gameObject, Amber);
-        Tmp(canvas.transform, "Subtitulo", "El robot que cruzó las eras", 42, new Vector2(-520f, 100f), new Vector2(820f, 60f),
-            new Color(Parchment.r, Parchment.g, Parchment.b, 0.85f), TextAlignmentOptions.Left, false, body: true);
-        MenuButton(canvas.transform, "BotonJugar", "Jugar", new Vector2(-710f, -60f), menu.Play);
-        MenuButton(canvas.transform, "BotonCreditos", "Créditos", new Vector2(-710f, -170f), menu.ShowCredits);
-        MenuButton(canvas.transform, "BotonSalir", "Salir", new Vector2(-710f, -280f), menu.Quit);
-        Tmp(canvas.transform, "Pie", "Mesopotamia · Egipto · Grecia · China", 26, new Vector2(-520f, -470f), new Vector2(820f, 40f),
-            new Color(Parchment.r, Parchment.g, Parchment.b, 0.55f), TextAlignmentOptions.Left, false, body: true);
+        var title = Tmp(canvas.transform, "Titulo", "UNIT-404", 150, AtLeft(900f, 235f), new Vector2(900f, 180f), Parchment, TextAlignmentOptions.Left, true);
+        title.textWrappingMode = TextWrappingModes.NoWrap;
+        title.margin = Vector4.zero;
+        Plain(Rect("Linea", canvas.transform, AtLeft(360f, 138f), new Vector2(360f, 4f)).gameObject, Amber);
+        Tmp(canvas.transform, "Subtitulo", "El robot que cruzó las eras", 40, AtLeft(900f, 92f), new Vector2(900f, 56f),
+            new Color(Parchment.r, Parchment.g, Parchment.b, 0.88f), TextAlignmentOptions.Left, false, body: true);
+        MenuButton(canvas.transform, "BotonJugar", "Jugar", AtLeft(440f, -40f), menu.Play);
+        MenuButton(canvas.transform, "BotonCreditos", "Créditos", AtLeft(440f, -145f), menu.ShowCredits);
+        MenuButton(canvas.transform, "BotonSalir", "Salir", AtLeft(440f, -250f), menu.Quit);
+
+        // culture now on screen + one dot per culture, both driven by BackgroundCycle
+        var caption = Tmp(canvas.transform, "CulturaActual", CultureArt[0].ToUpperInvariant(), 30, AtLeft(600f, -415f), new Vector2(600f, 44f),
+            cycle.accents[0], TextAlignmentOptions.Left, false, body: true);
+        caption.characterSpacing = 16f;
+        cycle.caption = caption;
+        cycle.dots = new Image[4];
+        for (int i = 0; i < 4; i++)
+        {
+            var dot = Rect("Punto_" + (i + 1), canvas.transform, new Vector2(MenuLeft + 9f + i * 30f, -458f), new Vector2(18f, 18f)).gameObject.AddComponent<Image>();
+            dot.sprite = UiSkin.Core; dot.raycastTarget = false;
+            cycle.dots[i] = dot;
+        }
+        cycle.Show(0f);
         EditorSceneManager.SaveScene(scene, Folder + "Inicio.unity");
+    }
+
+    // Centre of a centre-anchored rect whose left edge sits on MenuLeft.
+    static Vector2 AtLeft(float width, float y) => new Vector2(MenuLeft + width / 2f, y);
+
+    static Image StageLayer(RectTransform stage, string name, Sprite sprite, float alpha)
+    {
+        RectTransform rt = Rect(name, stage, Vector2.zero, Vector2.zero);
+        rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.offsetMin = rt.offsetMax = Vector2.zero;
+        var img = rt.gameObject.AddComponent<Image>();
+        img.sprite = sprite;
+        img.color = new Color(1f, 1f, 1f, alpha);
+        img.raycastTarget = false;
+        return img;
     }
 
     public static void BuildLoading()
@@ -153,15 +201,6 @@ public static class FlowSceneBuilder
         var img = go.AddComponent<Image>();
         img.color = color;
         img.raycastTarget = false;
-    }
-
-    // Thin vertical strip on the right edge (anchorX = 1) of a panel.
-    static RectTransform Edge(RectTransform parent, string name, float anchorX, float width)
-    {
-        RectTransform rt = Rect(name, parent, Vector2.zero, new Vector2(width, 0f));
-        rt.anchorMin = new Vector2(anchorX, 0f); rt.anchorMax = new Vector2(anchorX, 1f); rt.pivot = new Vector2(anchorX, 0.5f);
-        rt.anchoredPosition = Vector2.zero;
-        return rt;
     }
 
     // TextMeshPro label: Metamorphous (titles, story) or the body font; `glow` uses the outlined title material.
@@ -266,7 +305,11 @@ public static class FlowSceneBuilder
         Card(card, new Vector2(0f, 10f), new Vector2(1000f, 300f)); // framed dark card: the title reads over any landscape
         var number = Tmp(card, "Nivel", "NIVEL " + level, 44, new Vector2(0f, 95f), new Vector2(1200f, 60f), accent, TextAlignmentOptions.Center, true);
         number.characterSpacing = 18f;
-        Tmp(card, "Cultura", CulturePalette.CultureName(level).ToUpperInvariant(), 140, new Vector2(0f, -5f), new Vector2(1400f, 170f), Parchment, TextAlignmentOptions.Center, true);
+        var culture = Tmp(card, "Cultura", CulturePalette.CultureName(level).ToUpperInvariant(), 140, new Vector2(0f, -5f), new Vector2(920f, 170f), Parchment, TextAlignmentOptions.Center, true);
+        culture.textWrappingMode = TextWrappingModes.NoWrap;
+        culture.enableAutoSizing = true; // long names (MESOPOTAMIA) shrink to stay inside the card
+        culture.fontSizeMin = 80f;
+        culture.fontSizeMax = 140f;
         var line = Rect("Linea", card, new Vector2(0f, -100f), new Vector2(520f, 4f)).gameObject.AddComponent<Image>();
         line.color = accent;
         line.raycastTarget = false;

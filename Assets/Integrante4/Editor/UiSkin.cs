@@ -86,6 +86,14 @@ public static class UiSkin
         return new Color(0.04f, 0.03f, 0.02f, a);
     });
 
+    // Horizontal shade for the Inicio menu column (T43): dense ink on the left, eased to clear on the right.
+    public static Sprite SideShade => Get("ui_side_shade", 256, 0, (x, y, s) =>
+    {
+        float u = (x + 0.5f) / s;
+        float a = 1f - u * u * (3f - 2f * u);
+        return new Color(0.04f, 0.03f, 0.02f, 0.88f * a);
+    });
+
     static readonly Color Clear = new Color(0f, 0f, 0f, 0f);
 
     // Signed distance to a rounded square filling the texture (negative inside).

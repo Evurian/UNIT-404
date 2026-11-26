@@ -7,9 +7,9 @@ public static class SceneLoader
 {
     public const string LoadingScene = SceneFlow.Loading;
     public const string StartScene = SceneFlow.Start;
-    public static readonly string FirstLevel = SceneFlow.Next("Introduccion");
+    public static readonly string FirstStoryScene = SceneFlow.Next(SceneFlow.Start);
 
-    public static string Target { get; private set; } = FirstLevel;
+    public static string Target { get; private set; } = FirstStoryScene;
 
     public static void Go(string sceneName)
     {

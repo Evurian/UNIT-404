@@ -25,4 +25,24 @@ namespace Unit404.Integrante4.Core
             }
         }
     }
+
+    // Inicio background rotation (ODD S44, T43): each slide holds, then cross-fades into the next; wraps around.
+    public static class SlideShow
+    {
+        public static int Index(float t, int count, float hold, float fade)
+        {
+            if (count <= 0) return 0;
+            int k = (int)System.Math.Floor(System.Math.Max(0f, t) / (hold + fade));
+            return k % count;
+        }
+
+        // 0 while holding, eased 0 -> 1 during the cross-fade into slide Index + 1.
+        public static float Blend(float t, float hold, float fade)
+        {
+            float p = System.Math.Max(0f, t) % (hold + fade);
+            if (p <= hold) return 0f;
+            float u = (p - hold) / fade;
+            return u * u * (3f - 2f * u);
+        }
+    }
 }

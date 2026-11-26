@@ -271,7 +271,7 @@ public static class LevelSceneBuilder
     [MenuItem("UNIT-404/Integrante 4/Crear cinematicas de transicion")]
     public static void BuildCinematics()
     {
-        for (int level = 2; level <= 4; level++)
+        for (int level = 1; level <= 4; level++)
         {
             cinematicName = Unit404.Integrante4.Core.CinematicScript.SceneName(level);
             try { LevelBuilders[level - 1](); }

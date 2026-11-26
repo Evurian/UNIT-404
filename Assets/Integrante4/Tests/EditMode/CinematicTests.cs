@@ -9,6 +9,7 @@ namespace Unit404.Integrante4.Tests
     // ODD S27 / T34: in-engine culture transition between levels.
     public class CinematicTests
     {
+        [TestCase(1, "Transicion1_Mesopotamia", "Nivel 1 — Mesopotamia")]
         [TestCase(2, "Transicion2_Egipto", "Nivel 2 — Egipto")]
         [TestCase(3, "Transicion3_Grecia", "Nivel 3 — Grecia")]
         [TestCase(4, "Transicion4_China", "Nivel 4 — China")]
@@ -72,6 +73,7 @@ namespace Unit404.Integrante4.Tests
             Assert.AreEqual(1f, CinematicPath.Ease(1f), 0.0001f);
         }
 
+        [TestCase(1)]
         [TestCase(2)]
         [TestCase(3)]
         [TestCase(4)]

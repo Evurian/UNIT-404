@@ -2,7 +2,7 @@ using System;
 
 namespace Unit404.Integrante4.Core
 {
-    // Script of the culture transition played before levels 2-4 (ODD S27, T34): names, timing, Ada's lines.
+    // Script of the culture transition played before every level (ODD S27/S45, T34/T44): names, timing, Ada's lines.
     public static class CinematicScript
     {
         public const float Duration = 16f;
@@ -12,6 +12,12 @@ namespace Unit404.Integrante4.Core
 
         static readonly string[][] Lines =
         {
+            new[]
+            {
+                "Ada: Primera memoria: Mesopotamia, entre el Tigris y el Éufrates.",
+                "Ada: Sus ciudades de adobe crecieron alrededor de los zigurats.",
+                "Ada: Tiamat custodia la cima del zigurat. Adelante, UNIT-404.",
+            },
             new[]
             {
                 "Ada: El Archivo abre la siguiente memoria: Egipto, a orillas del Nilo.",
@@ -32,10 +38,10 @@ namespace Unit404.Integrante4.Core
             },
         };
 
-        public static bool HasCinematic(int level) => level >= 2 && level <= 4;
+        public static bool HasCinematic(int level) => level >= 1 && level <= 4;
         public static string SceneName(int level) => "Transicion" + Check(level) + "_" + CulturePalette.CultureName(level);
         public static string Title(int level) => "Nivel " + Check(level) + " — " + CulturePalette.CultureName(level);
-        public static string[] Subtitles(int level) => Lines[Check(level) - 2];
+        public static string[] Subtitles(int level) => Lines[Check(level) - 1];
 
         // Title card: fades in, holds, fades out early so the landscape carries the rest of the shot.
         public static float TitleAlpha(float t)
@@ -67,7 +73,7 @@ namespace Unit404.Integrante4.Core
 
         static int Check(int level)
         {
-            if (!HasCinematic(level)) throw new ArgumentOutOfRangeException(nameof(level), "cinematics exist for levels 2-4");
+            if (!HasCinematic(level)) throw new ArgumentOutOfRangeException(nameof(level), "cinematics exist for levels 1-4");
             return level;
         }
     }

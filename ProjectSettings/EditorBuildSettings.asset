@@ -15,6 +15,9 @@ EditorBuildSettings:
     path: Assets/Integrante4/Scenes/Introduccion.unity
     guid: 3682c145fd2dcf251934ddac7791b306
   - enabled: 1
+    path: Assets/Integrante4/Scenes/Transicion1_Mesopotamia.unity
+    guid: 8f1adfe0b7e9314fcb116b42af30bfe0
+  - enabled: 1
     path: Assets/Integrante4/Scenes/Nivel1_Mesopotamia.unity
     guid: 24464316b90e947aab8b8c88768382bd
   - enabled: 1

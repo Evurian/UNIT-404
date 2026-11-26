@@ -14,7 +14,8 @@ namespace Unit404.Integrante4.Tests
         const string Folder = "Assets/Integrante4/Scenes/";
 
         [TestCase("Inicio", "Introduccion")]
-        [TestCase("Introduccion", "Nivel1_Mesopotamia")]
+        [TestCase("Introduccion", "Transicion1_Mesopotamia")]
+        [TestCase("Transicion1_Mesopotamia", "Nivel1_Mesopotamia")]
         [TestCase("Nivel1_Mesopotamia", "Transicion2_Egipto")]
         [TestCase("Transicion2_Egipto", "Nivel2_Egipto")]
         [TestCase("Nivel2_Egipto", "Transicion3_Grecia")]
