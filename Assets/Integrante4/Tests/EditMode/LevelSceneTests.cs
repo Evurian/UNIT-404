@@ -571,12 +571,38 @@ namespace Unit404.Integrante4.Tests
             {
                 var host = r.transform.parent != null ? r.transform.parent.Find(r.name.Substring("Kit_".Length)) : null;
                 var box = host != null ? host.GetComponent<BoxCollider>() : null;
-                if (box == null || box.isTrigger || !host.CompareTag("Untagged") || host.name.StartsWith("Mastil") || host.name.StartsWith("Barco")) continue; // masts: open question (L78)
+                if (box == null || box.isTrigger || !host.CompareTag("Untagged") || host.name.StartsWith("Mastil") || host.name.StartsWith("Barco")) continue; // ships: mast and posts have their own colliders (L80)
                 if (Mathf.Abs(Mathf.DeltaAngle(host.eulerAngles.z, 0f)) > 0.5f) continue; // ramps: own test
                 float over = r.bounds.max.y - box.bounds.max.y;
                 if (over > 0.05f) failures.Add(host.name + " +" + over.ToString("0.00"));
             }
             Assert.IsEmpty(failures.Distinct(), "kit art above its collider: " + string.Join(", ", failures.Distinct()));
+        }
+
+        // L80: the harbour ships are large, leave a lane to fly around each one, the hull collider fits the visible hull and
+        // the mast (with its sail) and the bow and stern posts are solid.
+        [Test]
+        public void Level3_Ships_AreLargeAndSkirtable_WithASolidMast()
+        {
+            Open("Nivel3_Grecia");
+            var solids = Solids();
+            var ships = solids.Where(b => System.Text.RegularExpressions.Regex.IsMatch(b.name, @"^Barco_\d+$")).ToArray();
+            Assert.GreaterOrEqual(ships.Length, 3, "ships");
+            foreach (var ship in ships)
+            {
+                Bounds h = ship.bounds;
+                Assert.GreaterOrEqual(h.size.x, 7.5f, ship.name + " length");
+                Assert.GreaterOrEqual(Mathf.Max(h.min.z + 4f, 4f - h.max.z), 3.5f, ship.name + " leaves a lane to fly around it");
+                Bounds kit = ship.transform.parent.Find("Kit_" + ship.name).GetComponent<Renderer>().bounds;
+                Assert.LessOrEqual(kit.size.x, h.size.x + 0.3f, ship.name + " visible hull length vs collider");
+                Assert.LessOrEqual(kit.size.z, h.size.z + 0.3f, ship.name + " visible hull beam vs collider");
+                var mast = solids.FirstOrDefault(b => b.name == ship.name + "_Mastil");
+                Assert.IsNotNull(mast, ship.name + " solid mast");
+                Assert.AreEqual(h.center.x, mast.bounds.center.x, 0.05f, ship.name + " mast amidships");
+                Assert.AreEqual(h.max.y, mast.bounds.min.y, 0.05f, ship.name + " mast rises from the deck");
+                Assert.GreaterOrEqual(mast.bounds.max.y, kit.max.y - 0.05f, ship.name + " mast collider reaches the masthead");
+                Assert.AreEqual(2, solids.Count(b => b.name == ship.name + "_Proa" || b.name == ship.name + "_Popa"), ship.name + " solid bow and stern posts");
+            }
         }
 
         // L78: every ramp has a solid body under its slab, so no void shows beneath the walkway (ODD S40 for all levels).

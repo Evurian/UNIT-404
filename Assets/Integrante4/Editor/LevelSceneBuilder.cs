@@ -131,7 +131,8 @@ public static class LevelSceneBuilder
 
         // 1. Puerto (x 0-40): flight tutorial over ships, free depth
         Floor(root, "Muelle", 0f, 12f, 0f);
-        for (int i = 0; i < 4; i++) Solid(root, "Barco_" + (i + 1), 16f + i * 6f, 0.5f, 4f, 1f, Wall, (i % 2 == 0 ? -3f : 3f));
+        // Three large ships on alternating sides, each leaving a 4 m lane to fly around it (L80).
+        for (int i = 0; i < 3; i++) Ship(root, i + 1, 17f + i * 9f, i % 2 == 0 ? -1f : 1f);
         Pickups(root, "Fragmento", 14f, 38f, 5, 3f);
         Ring(root, 22f, 4f); Ring(root, 30f, 5f); Ring(root, 38f, 6f);
 
@@ -1324,6 +1325,32 @@ public static class LevelSceneBuilder
         Tagged(p, "PortalLlegada", "Plataforma", PrimitiveType.Cube, new Vector3(x, floorTopY - 0.18f, 0f), new Vector3(6f, 0.4f, pathDepth), false);
         var beacon = Make(p, "PortalFaro", PrimitiveType.Cube, new Vector3(x, floorTopY + 3.2f, 0f), new Vector3(0.4f, 5.6f, 0.4f), Color.white, "Default");
         Object.DestroyImmediate(beacon.GetComponent<Collider>());
+    }
+
+    // Harbour ship (L80): the kit ship (kits.py: length 6, hull beam 3 and height 0.8, bow and stern posts 1.7 high at
+    // +-2.4, mast and sail amidships up to 4.8, sail across the whole beam) scaled by ShipScale. The hull collider top is the
+    // deck; the mast with its sail and both posts get their own solid colliders, so the player never passes through them.
+    const float ShipScale = 4f / 3f;
+
+    static void Ship(Transform p, int n, float x, float side)
+    {
+        float s = ShipScale, beam = 3f * s, z = side * (pathDepth / 2f - beam / 2f);
+        string name = "Barco_" + n;
+        Solid(p, name, x, 0.4f * s, 6f * s, 0.8f * s, Wall, z, beam);
+        SolidCollider(p, name + "_Mastil", new Vector3(x, 2.8f * s, z), new Vector3(0.4f, 4f * s, 2f * s));
+        foreach (float end in new[] { 1f, -1f })
+            SolidCollider(p, name + (end > 0 ? "_Proa" : "_Popa"), new Vector3(x + end * 2.4f * s, 0.85f * s, z), new Vector3(0.72f * s, 1.7f * s, 1f * s));
+    }
+
+    // Invisible solid box (no renderer, so ApplyKit leaves it alone): collision for parts of a kit model.
+    static void SolidCollider(Transform p, string name, Vector3 centre, Vector3 size)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(p, false);
+        go.transform.position = centre;
+        go.transform.localScale = size;
+        go.layer = Layer("Entorno");
+        go.AddComponent<BoxCollider>();
     }
 
     static void Guard(Transform p, string name, float x, float y)
