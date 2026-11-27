@@ -72,9 +72,6 @@ public static class LevelSceneBuilder
         Portal(root, 185f, 10f);
         Pickups(root, "Fragmento", 164f, 182f, 3, 11.5f);
 
-        // Culture props standing on the path are solid (ODD S46): the player jumps them or flies over.
-        Prop(root, "jars", 16f, 0f, 0f); Prop(root, "brazier", 178f, 10f, 0f);
-
         // glyph 3 floats over Rampa_Calle (surface 2.25 at x 46), not inside it (ODD T46)
         Glyphs(root, new[] { 8f, 22f, 46f, 70f, 94f, 112f, 136f, 168f }, new[] { 2f, 8f, 3.5f, 7f, 10f, 9f, 11.5f, 11.5f });
         Finish(scene, new Vector3(2f, 2f, 0f), "Nivel1_Mesopotamia");
@@ -119,9 +116,6 @@ public static class LevelSceneBuilder
         Floor(root, "Suelo_Santuario", 160f, 190f, 0f);
         Portal(root, 185f, 0f);
         Pickups(root, "Fragmento", 164f, 182f, 3, 1.5f);
-
-        // Culture props standing on the path are solid (ODD S46): the player jumps them or flies over.
-        Prop(root, "papyrus", 32f, 0f, 0f); Prop(root, "brazier", 177f, 0f, 0f);
 
         Glyphs(root, new[] { 8f, 22f, 46f, 70f, 94f, 112f, 136f, 168f }, new[] { 2f, 8f, 2f, 7f, 9f, 9f, 2f, 2f });
         Finish(scene, new Vector3(2f, 2f, 0f), "Nivel2_Egipto");
@@ -247,6 +241,13 @@ public static class LevelSceneBuilder
         Rampa(root, "Rampa_Torre", 168f, 6f, 16f, 6f);
         RampBody(root, "Bloque_Subida", 168f, 6f, 16f, 6f, 4);
         Solid(root, "Torre_Estandarte", 180f, 6f, 8f, 12f, Wall, 0f, pathDepth);
+        // Monuments on both sides of the climb, standing on the ground beside the wall (ODD S47, L76): a watchtower pair,
+        // then a pagoda pair, so the ramp does not rise alone.
+        foreach (float side in new[] { -1f, 1f })
+        {
+            Solid(root, "Torre_Rampa_" + (side < 0 ? "I" : "D"), 163f, 5f, 5.6f, 10f, Wall, side * 7.8f, 5.6f);
+            Solid(root, "Pagoda_Rampa_" + (side < 0 ? "I" : "D"), 172f, 4.5f, 5f, 9f, Wall, side * 7.5f, 5f);
+        }
         Portal(root, 180f, 12f);
         foreach (float fx in new[] { 162f, 167f, 172f }) Pickups(root, "Fragmento", fx, fx, 1, RampTop(fx, 168f, 6f, 16f, 6f) + 1.5f);
 
@@ -745,7 +746,7 @@ public static class LevelSceneBuilder
         if (blockName.StartsWith("Terraza")) return "stairs";
         if (blockName.StartsWith("Bloque")) return "block";
         if (blockName.StartsWith("Mastil")) return "mast";
-        if (blockName == "Torre_Estandarte") return "keep";
+        if (blockName == "Torre_Estandarte" || blockName.StartsWith("Pagoda_")) return "keep";
         if (blockName.StartsWith("Muro") || blockName.StartsWith("Ladera_")) return "wall";
         if (blockName.StartsWith("Torre_")) return "tower";
         if (blockName.StartsWith("Barco")) return "ship";
@@ -959,7 +960,7 @@ public static class LevelSceneBuilder
     // ---- Backdrops (ODD S17, T19): three modelled depth layers per culture, tiled along the level outside the play
     // area; behind the 2.5D path, on both sides of the 3D worlds. No colliders (FBX import adds none). ----
     static readonly string[] BackdropLayers = { "near", "mid", "far" };
-    static readonly float[] BackdropGap = { 4f, 18f, 42f }, BackdropDrop = { 1.5f, 3f, 5f }, BackdropScale = { 1f, 1.6f, 2.6f };
+    static readonly float[] BackdropGap = { 6.5f, 18f, 42f }, BackdropDrop = { 1.5f, 3f, 5f }, BackdropScale = { 1f, 1.6f, 2.6f };
     const float BackdropSegment = 60f; // strip length in backdrops.py
 
     static void Backdrop(int level, bool freeDepth)
@@ -1073,10 +1074,11 @@ public static class LevelSceneBuilder
         if (guard != null) Guard(p, guard, x, floorTop + 1.5f);
     }
 
-    // 2.5D levels: a decorative ground strip behind every main floor (z 1-5, no collider: the player is held at z = 0 by the
-    // side bounds) dressed with culture props. It lies a step below the path (ODD S46): from the side camera the props then
-    // rise from behind the walkway instead of reading as standing on it. The boss arena gets neither (ODD S35).
-    const float ApronZ0 = 1f, ApronDepth = 4f, ApronDrop = 1.2f;
+    // 2.5D levels: a decorative ground strip behind every main floor (z 1-7, no collider: the player is held at z = 0 by the
+    // side bounds) dressed with purely decorative culture props. It lies a step below the path and the props keep a clear
+    // band behind it (front from z 2.5) and stay out from behind ramps (ODD S46, L76): from the side camera they rise from
+    // the background instead of reading as standing on the walkway. The boss arena gets neither (ODD S35).
+    const float ApronZ0 = 1f, ApronDepth = 6f, ApronDrop = 1.2f, DecoFront = 2.5f;
     static readonly string[][] DecoKinds =
     {
         new[] { "hut", "jars", "bricks", "brazier", "lamassu", "palm", "palm", "jars", "hut" },
@@ -1090,6 +1092,9 @@ public static class LevelSceneBuilder
         int entorno = Layer("Entorno");
         var rnd = new System.Random(level * 7919);
         var seen = new System.Collections.Generic.HashSet<string>();
+        var ramps = new System.Collections.Generic.List<Bounds>();
+        foreach (Transform t in GameObject.Find("Nivel").transform)
+            if (t.GetComponent<BoxCollider>() != null && Mathf.Abs(Mathf.DeltaAngle(t.eulerAngles.z, 0f)) > 0.5f) ramps.Add(t.GetComponent<BoxCollider>().bounds);
         foreach (Transform t in GameObject.Find("Nivel").transform)
         {
             var c = t.GetComponent<BoxCollider>();
@@ -1107,7 +1112,10 @@ public static class LevelSceneBuilder
                 if (x + size.x > b.max.x - 0.5f) break;
                 float cx = x + size.x / 2f;
                 if (cx > ArenaStartX && cx < ArenaEndX) { x = cx + size.x / 2f + 2f; continue; }
-                float zc = ApronZ0 + 0.5f + size.z / 2f + (float)rnd.NextDouble() * Mathf.Max(0f, ApronDepth - 1f - size.z);
+                float x0 = x, x1 = x + size.x;
+                if (ramps.Any(r => x0 < r.max.x + 1f && x1 > r.min.x - 1f)) { x += 1f; continue; }
+                float back = ApronZ0 + ApronDepth - 0.3f;
+                float zc = DecoFront + size.z / 2f + (float)rnd.NextDouble() * Mathf.Max(0f, back - DecoFront - size.z);
                 Deco(root, culture, prefix, kind, new Vector3(cx, b.max.y - ApronDrop, zc), size, Mathf.Lerp(-6f, 6f, (float)rnd.NextDouble()));
                 x = cx + size.x / 2f + Mathf.Lerp(0.6f, 3f, (float)rnd.NextDouble());
             }
@@ -1292,7 +1300,8 @@ public static class LevelSceneBuilder
     // The tall beacon is decorative (no collider) so the goal stays visible from far away.
     static void Portal(Transform p, float x, float floorTopY)
     {
-        Tagged(p, "PortalLlegada", "Plataforma", PrimitiveType.Cube, new Vector3(x, floorTopY + 0.2f, 0f), new Vector3(6f, 0.4f, pathDepth), false);
+        // Sunk into the floor, top 2 cm above it (no z-fighting): the player rolls onto it instead of meeting a lip (L76).
+        Tagged(p, "PortalLlegada", "Plataforma", PrimitiveType.Cube, new Vector3(x, floorTopY - 0.18f, 0f), new Vector3(6f, 0.4f, pathDepth), false);
         var beacon = Make(p, "PortalFaro", PrimitiveType.Cube, new Vector3(x, floorTopY + 3.2f, 0f), new Vector3(0.4f, 5.6f, 0.4f), Color.white, "Default");
         Object.DestroyImmediate(beacon.GetComponent<Collider>());
     }

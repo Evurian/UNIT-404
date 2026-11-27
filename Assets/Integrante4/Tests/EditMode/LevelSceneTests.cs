@@ -243,6 +243,11 @@ namespace Unit404.Integrante4.Tests
             Assert.IsFalse(portal.GetComponent<Collider>().isTrigger, "Integrante 1 completes the level in OnCollisionEnter against Plataforma");
             Assert.LessOrEqual(portal.transform.localScale.y, 0.6f, "flat pad to land on");
             Assert.GreaterOrEqual(portal.transform.localScale.x, 4f, "wide enough to land on");
+            // L76: flush with the floor it lies on, so the player rolls onto it instead of meeting a lip.
+            Bounds pad = portal.GetComponent<Collider>().bounds;
+            var floor = Solids().Where(b => b.gameObject != portal && b.bounds.min.x <= pad.center.x && b.bounds.max.x >= pad.center.x && b.bounds.max.y <= pad.max.y + 0.5f).ToArray();
+            Assert.IsNotEmpty(floor, "floor under the arrival pad");
+            Assert.AreEqual(floor.Max(b => b.bounds.max.y), pad.max.y, 0.05f, "arrival pad top vs floor top");
         }
 
         [TestCase("Nivel1_Mesopotamia")]
@@ -374,7 +379,9 @@ namespace Unit404.Integrante4.Tests
                     Assert.IsNotEmpty(under, "path floor in front of the decorative ground at x " + g.center.x.ToString("0.0"));
                     Assert.LessOrEqual(g.max.y, under.Max(f => f.bounds.max.y) - 1f, "decorative ground a step below the path at x " + g.center.x.ToString("0.0"));
                 }
-                Assert.GreaterOrEqual(solidProps.Length, 2, "solid culture props on the path");
+                // L76: in 2.5D the props are scenery only, never obstacles on the path.
+                Assert.AreEqual(0, solidProps.Length, "2.5D props are decorative only");
+                var ramps = Solids().Where(r => Mathf.Abs(Mathf.DeltaAngle(r.transform.eulerAngles.z, 0f)) > 0.5f).Select(r => r.bounds).ToArray();
                 Assert.Greater(ground.Length, 0, "decorative ground behind the path");
                 // ODD S35 / T37: the arena floor keeps the path depth, no decorative apron behind it.
                 Assert.IsFalse(ground.Any(g => g.center.x > 120f && g.center.x < 160f), "no decorative ground in the boss arena");
@@ -382,7 +389,8 @@ namespace Unit404.Integrante4.Tests
                 {
                     Bounds b = m.GetComponent<Renderer>().bounds;
                     Assert.AreEqual(0, m.GetComponentsInParent<Collider>().Length + m.GetComponentsInChildren<Collider>().Length, m.name + " no collider in 2.5D");
-                    Assert.Greater(b.min.z, 1f, m.name + " behind the path wall");
+                    Assert.GreaterOrEqual(b.min.z, 2.2f, m.name + " keeps a clear band behind the path");
+                    Assert.IsFalse(ramps.Any(r => b.min.x < r.max.x + 0.9f && b.max.x > r.min.x - 0.9f), m.name + " stands behind a ramp: " + b);
                     Assert.IsTrue(ground.Any(g => g.min.x <= b.center.x && g.max.x >= b.center.x && g.min.z <= b.center.z && g.max.z >= b.center.z && Mathf.Abs(g.max.y - b.min.y) < 0.05f),
                         m.name + " stands on the decorative ground: " + b);
                 }
