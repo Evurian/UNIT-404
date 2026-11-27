@@ -1,3 +1,4 @@
+using TMPro;
 using System.Linq;
 using Unit404.Integrante4.Core;
 using UnityEngine;
@@ -11,7 +12,7 @@ public class LevelNarrator : MonoBehaviour
     public int glyphTotal = 8;
     public int glyphsCollected;
     public GameObject summaryCard;
-    public Text summaryText;
+    public TMP_Text summaryText;
     public AchievementToast toast;
     public string nextScene;
     public CultureTransition transition;

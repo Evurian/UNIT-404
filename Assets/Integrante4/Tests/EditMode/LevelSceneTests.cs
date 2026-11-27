@@ -799,7 +799,7 @@ namespace Unit404.Integrante4.Tests
             var screen = Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).Single(m => m.GetType().Name == "FallScreen");
             var panel = (GameObject)screen.GetType().GetField("panel").GetValue(screen);
             Assert.IsFalse(panel.activeSelf, "hidden until a fall");
-            var texts = panel.GetComponentsInChildren<UnityEngine.UI.Text>(true).Select(t => t.text).ToArray();
+            var texts = panel.GetComponentsInChildren<TMPro.TMP_Text>(true).Select(t => t.text).ToArray();
             CollectionAssert.Contains(texts, "Sistema caído");
             CollectionAssert.Contains(texts, "Reintentar desde el punto de control");
             var door = (Transform)screen.GetType().GetField("arenaDoor").GetValue(screen);
@@ -827,7 +827,7 @@ namespace Unit404.Integrante4.Tests
             Assert.AreEqual(tint.g, bg.color.g, 0.01f, "culture tint g");
             Assert.AreEqual(tint.b, bg.color.b, 0.01f, "culture tint b");
             Assert.GreaterOrEqual(bg.color.a, 0.95f, "a screen, not a see-through overlay");
-            var texts = panel.GetComponentsInChildren<UnityEngine.UI.Text>(true).Select(t => t.text).ToArray();
+            var texts = panel.GetComponentsInChildren<TMPro.TMP_Text>(true).Select(t => t.text).ToArray();
             string culture = Unit404.Integrante4.Core.CulturePalette.CultureName(level);
             Assert.IsTrue(texts.Any(t => string.Equals(t, culture, System.StringComparison.OrdinalIgnoreCase)), "culture name on the screen");
 

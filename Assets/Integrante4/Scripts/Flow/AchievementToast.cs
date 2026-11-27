@@ -1,12 +1,12 @@
+using TMPro;
 using System.Collections;
 using UnityEngine;
-using UnityEngine.UI;
 
 // Golden seal badge that slides in from the top-right corner for 3 seconds (GDD 11.6).
 public class AchievementToast : MonoBehaviour
 {
     public RectTransform badge;
-    public Text label;
+    public TMP_Text label;
     public float visibleSeconds = 3f;
     public float slideSeconds = 0.4f;
 

@@ -261,7 +261,8 @@ public static class FlowSceneBuilder
         RectTransform card = Rect("TarjetaResumen", canvas.transform, Vector2.zero, new Vector2(800f, 560f));
         card.gameObject.AddComponent<Image>().color = new Color(Parchment.r, Parchment.g, Parchment.b, 0.95f);
         Label(card, "Titulo", "Resumen del nivel", 52, new Vector2(0f, 220f), new Vector2(700f, 80f), Ink);
-        narrator.summaryText = Label(card, "Detalle", "", 38, new Vector2(0f, 20f), new Vector2(700f, 300f), Ink);
+        narrator.summaryText = Label(card, "Detalle", "", 34, new Vector2(0f, 20f), new Vector2(700f, 300f), Ink, body: true);
+        FitText(narrator.summaryText, 22f);
         Button(card, "BotonContinuar", "Continuar", new Vector2(0f, -210f), narrator.Continue);
         narrator.summaryCard = card.gameObject;
 
@@ -270,7 +271,8 @@ public static class FlowSceneBuilder
         badge.anchorMin = badge.anchorMax = badge.pivot = new Vector2(1f, 1f);
         badge.anchoredPosition = new Vector2(-30f, -30f);
         badge.gameObject.AddComponent<Image>().color = new Color(0.95f, 0.78f, 0.25f);
-        toast.label = Label(badge, "Texto", "", 34, Vector2.zero, badge.sizeDelta, Ink);
+        toast.label = Label(badge, "Texto", "", 30, Vector2.zero, badge.sizeDelta, Ink, body: true);
+        FitText(toast.label, 18f);
         toast.badge = badge;
         narrator.toast = toast;
 
@@ -371,10 +373,10 @@ public static class FlowSceneBuilder
         emblem.sprite = UiSkin.Core;
         emblem.color = accent;
         emblem.raycastTarget = false;
-        Label(panel, "Cultura", CulturePalette.CultureName(level).ToUpperInvariant(), 34, new Vector2(0f, 160f), new Vector2(1000f, 50f), accent);
+        Label(panel, "Cultura", CulturePalette.CultureName(level).ToUpperInvariant(), 34, new Vector2(0f, 160f), new Vector2(1000f, 50f), accent, body: true);
         Label(panel, "Titulo", "Sistema caído", 96, new Vector2(0f, 80f), new Vector2(1100f, 120f), Parchment);
         Label(panel, "Subtitulo", "Señal perdida. UNIT-404 se restaura desde el último punto seguro.", 34,
-            new Vector2(0f, -10f), new Vector2(1100f, 50f), new Color(Parchment.r, Parchment.g, Parchment.b, 0.75f));
+            new Vector2(0f, -10f), new Vector2(1100f, 50f), new Color(Parchment.r, Parchment.g, Parchment.b, 0.75f), body: true);
         Button(panel, "BotonReintentar", "Reintentar desde el punto de control", new Vector2(0f, -130f), screen.Retry);
         foreach (var rt in panel.Find("BotonReintentar").GetComponentsInChildren<RectTransform>()) rt.sizeDelta = new Vector2(900f, 96f);
         screen.panel = panel.gameObject;
@@ -453,12 +455,18 @@ public static class FlowSceneBuilder
         img.raycastTarget = false;
     }
 
-    static Text Label(Transform parent, string name, string text, int size, Vector2 pos, Vector2 box, Color color)
+    // Overlay label (ODD S48, T45): Metamorphous with the outlined title material, or Kenney Future for body copy.
+    static TextMeshProUGUI Label(Transform parent, string name, string text, int size, Vector2 pos, Vector2 box, Color color, bool body = false)
     {
-        var t = Rect(name, parent, pos, box).gameObject.AddComponent<Text>();
-        t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        t.text = text; t.fontSize = size; t.color = color; t.alignment = TextAnchor.MiddleCenter;
-        return t;
+        return Tmp(parent, name, text, size, pos, box, color, TextAlignmentOptions.Center, glow: !body, body: body);
+    }
+
+    // Kenney Future is wide: shrink long summaries and achievement names instead of overflowing the card.
+    static void FitText(TMP_Text text, float min)
+    {
+        text.enableAutoSizing = true;
+        text.fontSizeMin = min;
+        text.fontSizeMax = text.fontSize;
     }
 
     static void Button(Transform parent, string name, string label, Vector2 pos, UnityEngine.Events.UnityAction onClick)
@@ -471,6 +479,6 @@ public static class FlowSceneBuilder
         var button = rt.gameObject.AddComponent<UnityEngine.UI.Button>();
         button.targetGraphic = img;
         UnityEventTools.AddPersistentListener(button.onClick, onClick);
-        Label(rt, "Texto", label, 44, Vector2.zero, rt.sizeDelta, Ink);
+        Tmp(rt, "Texto", label, 44, Vector2.zero, rt.sizeDelta, Ink, TextAlignmentOptions.Center, false);
     }
 }

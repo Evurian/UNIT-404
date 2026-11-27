@@ -65,6 +65,31 @@ namespace Unit404.Integrante4.Tests
             Assert.IsNotNull(GameObject.Find("Vineta"), "vignette over the art keeps the text readable");
         }
 
+        // ODD S48 / T45: pause menu, "Sistema caído", summary card and achievement toast use the game fonts.
+        [TestCase("Nivel1_Mesopotamia")]
+        [TestCase("Nivel2_Egipto")]
+        [TestCase("Nivel3_Grecia")]
+        [TestCase("Nivel4_China")]
+        public void LevelOverlays_UseGameFonts(string sceneName)
+        {
+            EditorSceneManager.OpenScene("Assets/Integrante4/Scenes/" + sceneName + ".unity");
+            foreach (string canvasName in new[] { "PausaCanvas", "CaidaCanvas", "NarradorCanvas" })
+            {
+                GameObject canvas = GameObject.Find(canvasName);
+                Assert.IsNotNull(canvas, canvasName + " missing");
+                Assert.AreEqual(0, canvas.GetComponentsInChildren<Text>(true).Length, canvasName + ": legacy Text left");
+                var texts = canvas.GetComponentsInChildren<TextMeshProUGUI>(true);
+                Assert.IsTrue(texts.Any(t => t.font != null && t.font.name == "Metamorphous SDF"), canvasName + ": title in Metamorphous");
+            }
+            var fall = GameObject.Find("CaidaCanvas").GetComponentsInChildren<TextMeshProUGUI>(true);
+            Assert.IsTrue(fall.Any(t => t.font != null && t.font.name == "Kenney Future SDF"), "fall screen body in Kenney Future");
+            Transform narrator = GameObject.Find("NarradorCanvas").transform;
+            var summary = narrator.Find("TarjetaResumen/Detalle").GetComponent<TextMeshProUGUI>();
+            Assert.AreEqual("Kenney Future SDF", summary.font.name, "summary body in Kenney Future");
+            var toast = narrator.Find("Sello/Texto").GetComponent<TextMeshProUGUI>();
+            Assert.AreEqual("Kenney Future SDF", toast.font.name, "toast in Kenney Future");
+        }
+
         [Test]
         public void LoadingScreen_HasOneBackgroundPerCulture()
         {
