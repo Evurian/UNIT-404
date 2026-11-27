@@ -487,8 +487,9 @@ def ship(name, st, stone, trim, l=6.0, w=2.0, h=1.0):
     hull = cone(stone, w * 0.75, w * 0.5, h * 0.8, 6, twist=0.0)
     hull.scale = (l / (w * 1.5), 1.0, 1.0)
     parts = [hull,
-             box(trim, l * 0.12, w * 0.5, h * 1.7, l / 2 - l * 0.1, 0, 0),
-             box(trim, l * 0.12, w * 0.5, h * 1.3, -l / 2 + l * 0.1, 0, 0),
+             # low bow and stern posts (L82): just above the deck (hull top h * 0.8), so landing on the ends stays easy
+             box(trim, l * 0.12, w * 0.5, h * 1.15, l / 2 - l * 0.1, 0, 0),
+             box(trim, l * 0.12, w * 0.5, h * 1.05, -l / 2 + l * 0.1, 0, 0),
              cone(trim, 0.09, 0.07, 4.0, 8, base_z=h * 0.8)]
     if st["sail"]:
         parts.append(box(trim, 0.08, w * 1.0, 2.4, 0, 0, h * 0.8 + 1.4))

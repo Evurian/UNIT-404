@@ -887,7 +887,7 @@ public static class LevelSceneBuilder
             }
             else
             {
-                var scale = piece == "ship" ? Vector3.one * (size.x / nominal.x) : new Vector3(size.x / nominal.x, size.y / nominal.y, size.z / nominal.z);
+                var scale = piece == "ship" ? new Vector3(size.x / nominal.x, size.x / nominal.x, size.z / ShipKitBeam) : new Vector3(size.x / nominal.x, size.y / nominal.y, size.z / nominal.z);
                 // kit pieces have their origin at the centre of their base
                 var kit = Place(prefab, block, material, scale, block.position - block.rotation * new Vector3(0f, size.y / 2f, 0f));
                 if (piece != "ship" && piece != "mast") FitUnderCollider(kit, block);
@@ -1327,19 +1327,21 @@ public static class LevelSceneBuilder
         Object.DestroyImmediate(beacon.GetComponent<Collider>());
     }
 
-    // Harbour ship (L80): the kit ship (kits.py: length 6, hull beam 3 and height 0.8, bow and stern posts 1.7 high at
-    // +-2.4, mast and sail amidships up to 4.8, sail across the whole beam) scaled by ShipScale. The hull collider top is the
-    // deck; the mast with its sail and both posts get their own solid colliders, so the player never passes through them.
-    const float ShipScale = 4f / 3f;
+    // Harbour ship (L80, L82): the kit ship (kits.py: length 6, hull beam 3 and height 0.8, low bow and stern posts up to
+    // 1.15 at +-2.4, mast amidships up to 4.8, sail across the beam from 2.2 to 4.6) scaled by ShipScale in length and height
+    // and by ShipBeamScale across. The hull collider top is the deck; the mast pole, the raised sail and both posts get their
+    // own solid colliders, so the player never passes through them yet walks the deck beside the mast and under the sail.
+    const float ShipScale = 4f / 3f, ShipBeamScale = 1.6f, ShipKitBeam = 3f;
 
     static void Ship(Transform p, int n, float x, float side)
     {
-        float s = ShipScale, beam = 3f * s, z = side * (pathDepth / 2f - beam / 2f);
+        float s = ShipScale, b = ShipBeamScale, beam = ShipKitBeam * b, z = side * (pathDepth / 2f - beam / 2f);
         string name = "Barco_" + n;
         Solid(p, name, x, 0.4f * s, 6f * s, 0.8f * s, Wall, z, beam);
-        SolidCollider(p, name + "_Mastil", new Vector3(x, 2.8f * s, z), new Vector3(0.4f, 4f * s, 2f * s));
+        SolidCollider(p, name + "_Mastil", new Vector3(x, 2.8f * s, z), new Vector3(0.4f, 4f * s, 0.4f));
+        SolidCollider(p, name + "_Vela", new Vector3(x, 3.4f * s, z), new Vector3(0.4f, 2.4f * s, 2f * b));
         foreach (float end in new[] { 1f, -1f })
-            SolidCollider(p, name + (end > 0 ? "_Proa" : "_Popa"), new Vector3(x + end * 2.4f * s, 0.85f * s, z), new Vector3(0.72f * s, 1.7f * s, 1f * s));
+            SolidCollider(p, name + (end > 0 ? "_Proa" : "_Popa"), new Vector3(x + end * 2.4f * s, 0.575f * s, z), new Vector3(0.72f * s, 1.15f * s, 1f * b));
     }
 
     // Invisible solid box (no renderer, so ApplyKit leaves it alone): collision for parts of a kit model.

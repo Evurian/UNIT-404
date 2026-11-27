@@ -579,8 +579,9 @@ namespace Unit404.Integrante4.Tests
             Assert.IsEmpty(failures.Distinct(), "kit art above its collider: " + string.Join(", ", failures.Distinct()));
         }
 
-        // L80: the harbour ships are large, leave a lane to fly around each one, the hull collider fits the visible hull and
-        // the mast (with its sail) and the bow and stern posts are solid.
+        // L80, L82: the harbour ships are large and wide, leave a lane to fly around each one, the hull collider fits the
+        // visible hull; the mast pole, the raised sail and the low bow and stern posts are solid, and the deck stays walkable
+        // beside the mast and under the sail.
         [Test]
         public void Level3_Ships_AreLargeAndSkirtable_WithASolidMast()
         {
@@ -592,7 +593,8 @@ namespace Unit404.Integrante4.Tests
             {
                 Bounds h = ship.bounds;
                 Assert.GreaterOrEqual(h.size.x, 7.5f, ship.name + " length");
-                Assert.GreaterOrEqual(Mathf.Max(h.min.z + 4f, 4f - h.max.z), 3.5f, ship.name + " leaves a lane to fly around it");
+                Assert.GreaterOrEqual(h.size.z, 4.5f, ship.name + " beam");
+                Assert.GreaterOrEqual(Mathf.Max(h.min.z + 4f, 4f - h.max.z), 3f, ship.name + " leaves a lane to fly around it");
                 Bounds kit = ship.transform.parent.Find("Kit_" + ship.name).GetComponent<Renderer>().bounds;
                 Assert.LessOrEqual(kit.size.x, h.size.x + 0.3f, ship.name + " visible hull length vs collider");
                 Assert.LessOrEqual(kit.size.z, h.size.z + 0.3f, ship.name + " visible hull beam vs collider");
@@ -601,7 +603,13 @@ namespace Unit404.Integrante4.Tests
                 Assert.AreEqual(h.center.x, mast.bounds.center.x, 0.05f, ship.name + " mast amidships");
                 Assert.AreEqual(h.max.y, mast.bounds.min.y, 0.05f, ship.name + " mast rises from the deck");
                 Assert.GreaterOrEqual(mast.bounds.max.y, kit.max.y - 0.05f, ship.name + " mast collider reaches the masthead");
-                Assert.AreEqual(2, solids.Count(b => b.name == ship.name + "_Proa" || b.name == ship.name + "_Popa"), ship.name + " solid bow and stern posts");
+                Assert.LessOrEqual(mast.bounds.size.z, 0.6f, ship.name + " mast is a pole, the deck stays open beside it");
+                var sail = solids.FirstOrDefault(b => b.name == ship.name + "_Vela");
+                Assert.IsNotNull(sail, ship.name + " solid sail");
+                Assert.GreaterOrEqual(sail.bounds.min.y - h.max.y, 1.5f, ship.name + " the player passes under the sail");
+                var posts = solids.Where(b => b.name == ship.name + "_Proa" || b.name == ship.name + "_Popa").ToArray();
+                Assert.AreEqual(2, posts.Length, ship.name + " solid bow and stern posts");
+                foreach (var post in posts) Assert.LessOrEqual(post.bounds.max.y - h.max.y, 0.6f, post.name + " low post");
             }
         }
 
