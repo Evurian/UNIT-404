@@ -47,6 +47,7 @@ public static class LevelSceneBuilder
         Solid(root, "Muro_Adobe_1", 52f, 2f, 2f, 4f, Wall);
         Solid(root, "Muro_Adobe_2", 66f, 2f, 2f, 4f, Wall);
         Rampa(root, "Rampa_Calle", 44f, 0f, 8f, 3f);
+        RampBody(root, "Bloque_Rampa_Calle", 44f, 0f, 8f, 3f, 4);    // solid under the slab, no void (L78)
         Guard(root, "Guardia_1", 58f, 1.5f); Guard(root, "Guardia_2", 72f, 1.5f);
         Pickups(root, "Fragmento", 42f, 78f, 4, 5f);
         Tagged(root, "Checkpoint_1", "Checkpoint", PrimitiveType.Cube, new Vector3(78f, 2f, 0f), new Vector3(1f, 4f, 1f), true);
@@ -143,6 +144,7 @@ public static class LevelSceneBuilder
 
         // 3. Ladera (x 80-120): rolling rocks and falling columns
         Rampa(root, "Ladera", 100f, 0f, 40f, 10f); // ends level with the Ruinas floor (top 10), no step (ODD S26)
+        RampBody(root, "Bloque_Ladera", 100f, 0f, 40f, 10f, 10);   // solid under the slab, no void (L78)
         // Obstacles span the whole 8 m path (ODD S19): logs rolling down the slope and fallen columns dropping across it.
         float slope = Mathf.Atan2(10f, 40f);
         Vector3 downhill = new Vector3(-Mathf.Cos(slope), -Mathf.Sin(slope), 0f);
@@ -879,14 +881,15 @@ public static class LevelSceneBuilder
                 for (int ix = 0; ix < nx; ix++)
                 {
                     var local = new Vector3((ix + 0.5f) / nx - 0.5f, -0.5f, 0f);
-                    Place(prefab, block, material, scale, block.position + block.rotation * Vector3.Scale(local, size));
+                    FitUnderCollider(Place(prefab, block, material, scale, block.position + block.rotation * Vector3.Scale(local, size)), block);
                 }
             }
             else
             {
                 var scale = piece == "ship" ? Vector3.one * (size.x / nominal.x) : new Vector3(size.x / nominal.x, size.y / nominal.y, size.z / nominal.z);
                 // kit pieces have their origin at the centre of their base
-                Place(prefab, block, material, scale, block.position - block.rotation * new Vector3(0f, size.y / 2f, 0f));
+                var kit = Place(prefab, block, material, scale, block.position - block.rotation * new Vector3(0f, size.y / 2f, 0f));
+                if (piece != "ship" && piece != "mast") FitUnderCollider(kit, block);
             }
             block.GetComponent<MeshRenderer>().enabled = false;
         }
@@ -1026,7 +1029,7 @@ public static class LevelSceneBuilder
         }
     }
 
-    static void Place(GameObject prefab, Transform block, Material material, Vector3 scale, Vector3 position)
+    static GameObject Place(GameObject prefab, Transform block, Material material, Vector3 scale, Vector3 position)
     {
         var kit = (GameObject)PrefabUtility.InstantiatePrefab(prefab, block.parent);
         kit.name = "Kit_" + block.name;
@@ -1040,6 +1043,23 @@ public static class LevelSceneBuilder
             for (int i = 0; i < mats.Length; i++) mats[i] = material;
             kr.sharedMaterials = mats;
         }
+        return kit;
+    }
+
+    // ODD S18 / L78: merlons, pilasters and roofs may not rise above the collider the player stands on. The piece is
+    // squashed in height (its origin is the centre of its base, so the base stays put) until its top meets the collider top.
+    static void FitUnderCollider(GameObject kit, Transform block)
+    {
+        var box = block.GetComponent<BoxCollider>();
+        var renderers = kit.GetComponentsInChildren<Renderer>();
+        if (box == null || renderers.Length == 0) return;
+        Bounds vis = renderers[0].bounds;
+        foreach (var r in renderers) vis.Encapsulate(r.bounds);
+        float top = box.bounds.max.y, baseY = kit.transform.position.y;
+        if (vis.max.y <= top + 0.01f || vis.max.y - baseY < 0.01f) return;
+        Vector3 s = kit.transform.localScale;
+        s.y *= (top - baseY) / (vis.max.y - baseY);
+        kit.transform.localScale = s;
     }
 
     // ---- Culture props (ODD S28, T30) ----

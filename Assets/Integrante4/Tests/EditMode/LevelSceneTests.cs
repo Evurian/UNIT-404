@@ -557,6 +557,52 @@ namespace Unit404.Integrante4.Tests
             }
         }
 
+        // ODD S18 / L78: no kit art rises above the collider it skins, otherwise the player standing on the block sinks into
+        // the merlons, pilasters or roofs (the cube "passes through the texture").
+        [TestCase("Nivel1_Mesopotamia")]
+        [TestCase("Nivel2_Egipto")]
+        [TestCase("Nivel3_Grecia")]
+        [TestCase("Nivel4_China")]
+        public void KitArt_NeverRisesAboveItsCollider(string sceneName)
+        {
+            Open(sceneName);
+            var failures = new System.Collections.Generic.List<string>();
+            foreach (var r in Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None).Where(r => r.name.StartsWith("Kit_")))
+            {
+                var host = r.transform.parent != null ? r.transform.parent.Find(r.name.Substring("Kit_".Length)) : null;
+                var box = host != null ? host.GetComponent<BoxCollider>() : null;
+                if (box == null || box.isTrigger || !host.CompareTag("Untagged") || host.name.StartsWith("Mastil") || host.name.StartsWith("Barco")) continue; // masts: open question (L78)
+                if (Mathf.Abs(Mathf.DeltaAngle(host.eulerAngles.z, 0f)) > 0.5f) continue; // ramps: own test
+                float over = r.bounds.max.y - box.bounds.max.y;
+                if (over > 0.05f) failures.Add(host.name + " +" + over.ToString("0.00"));
+            }
+            Assert.IsEmpty(failures.Distinct(), "kit art above its collider: " + string.Join(", ", failures.Distinct()));
+        }
+
+        // L78: every ramp has a solid body under its slab, so no void shows beneath the walkway (ODD S40 for all levels).
+        [TestCase("Nivel1_Mesopotamia")]
+        [TestCase("Nivel2_Egipto")]
+        [TestCase("Nivel3_Grecia")]
+        [TestCase("Nivel4_China")]
+        public void Ramps_HaveASolidBodyUnderTheSlab(string sceneName)
+        {
+            Open(sceneName);
+            var solids = Solids();
+            foreach (var ramp in solids.Where(b => Mathf.Abs(Mathf.DeltaAngle(b.transform.eulerAngles.z, 0f)) > 0.5f))
+            {
+                Vector3 s = ramp.transform.lossyScale;
+                Vector3 low = ramp.transform.position + ramp.transform.rotation * new Vector3(-s.x / 2f, s.y / 2f, 0f);
+                Vector3 high = ramp.transform.position + ramp.transform.rotation * new Vector3(s.x / 2f, s.y / 2f, 0f);
+                foreach (float t in new[] { 0.4f, 0.6f, 0.9f })
+                {
+                    float x = Mathf.Lerp(low.x, high.x, t), top = Mathf.Lerp(low.y, high.y, t);
+                    bool filled = solids.Any(b => b != ramp && b.transform.rotation == Quaternion.identity && b.bounds.min.x <= x && b.bounds.max.x >= x
+                        && b.bounds.min.z < ramp.bounds.max.z && b.bounds.max.z > ramp.bounds.min.z && b.bounds.min.y <= low.y + 0.05f && b.bounds.max.y >= top - 2.5f);
+                    Assert.IsTrue(filled, ramp.name + " has a void under its slab at x " + x.ToString("0.0"));
+                }
+            }
+        }
+
         // ODD S40 / T41: along the 3D main line (full-width walkways) every height change is a ramp, never a step;
         // China has no gap at all and its wall walk is a solid body down to the ground.
         [TestCase("Nivel3_Grecia", true)]
