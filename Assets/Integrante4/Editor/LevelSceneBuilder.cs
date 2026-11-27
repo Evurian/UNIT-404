@@ -72,7 +72,11 @@ public static class LevelSceneBuilder
         Portal(root, 185f, 10f);
         Pickups(root, "Fragmento", 164f, 182f, 3, 11.5f);
 
-        Glyphs(root, new[] { 8f, 22f, 46f, 70f, 94f, 112f, 136f, 168f }, new[] { 2f, 8f, 2f, 7f, 10f, 9f, 11.5f, 11.5f });
+        // Culture props standing on the path are solid (ODD S46): the player jumps them or flies over.
+        Prop(root, "jars", 16f, 0f, 0f); Prop(root, "brazier", 178f, 10f, 0f);
+
+        // glyph 3 floats over Rampa_Calle (surface 2.25 at x 46), not inside it (ODD T46)
+        Glyphs(root, new[] { 8f, 22f, 46f, 70f, 94f, 112f, 136f, 168f }, new[] { 2f, 8f, 3.5f, 7f, 10f, 9f, 11.5f, 11.5f });
         Finish(scene, new Vector3(2f, 2f, 0f), "Nivel1_Mesopotamia");
     }
 
@@ -115,6 +119,9 @@ public static class LevelSceneBuilder
         Floor(root, "Suelo_Santuario", 160f, 190f, 0f);
         Portal(root, 185f, 0f);
         Pickups(root, "Fragmento", 164f, 182f, 3, 1.5f);
+
+        // Culture props standing on the path are solid (ODD S46): the player jumps them or flies over.
+        Prop(root, "papyrus", 32f, 0f, 0f); Prop(root, "brazier", 177f, 0f, 0f);
 
         Glyphs(root, new[] { 8f, 22f, 46f, 70f, 94f, 112f, 136f, 168f }, new[] { 2f, 8f, 2f, 7f, 9f, 9f, 2f, 2f });
         Finish(scene, new Vector3(2f, 2f, 0f), "Nivel2_Egipto");
@@ -218,7 +225,7 @@ public static class LevelSceneBuilder
         // 3. Adarve de la muralla (x 80-120): a ramp up the wall (0 -> 6, ODD S40), then the wall walk with carts.
         // The wall is a solid body down to the ground, no void under the walkway.
         Rampa(root, "Rampa_Muralla", 86f, 0f, 12f, 6f);
-        RampBody(root, "Muro_Rampa", 86f, 0f, 12f, 6f, 4);
+        RampBody(root, "Bloque_Rampa", 86f, 0f, 12f, 6f, 4);
         Walk(root, "Adarve", 106f, 5f, 28f, 2f);
         Solid(root, "Muro_Adarve", 106f, 2f, 28f, 4f, Wall, 0f, pathDepth);
         // Rows of carts side by side across the 8 m wall walk (ODD S19), on the walkway (top 6), moving together.
@@ -238,7 +245,7 @@ public static class LevelSceneBuilder
 
         // 5. Torre del estandarte (x 160-190): the wall climbs to the tower top (6 -> 12, ODD S40), arrival portal
         Rampa(root, "Rampa_Torre", 168f, 6f, 16f, 6f);
-        RampBody(root, "Muro_Subida", 168f, 6f, 16f, 6f, 4);
+        RampBody(root, "Bloque_Subida", 168f, 6f, 16f, 6f, 4);
         Solid(root, "Torre_Estandarte", 180f, 6f, 8f, 12f, Wall, 0f, pathDepth);
         Portal(root, 180f, 12f);
         foreach (float fx in new[] { 162f, 167f, 172f }) Pickups(root, "Fragmento", fx, fx, 1, RampTop(fx, 168f, 6f, 16f, 6f) + 1.5f);
@@ -260,6 +267,7 @@ public static class LevelSceneBuilder
         Gate(root, 5, 133f, 6f, "lantern", null, "Ballestero_5");          // arena: accent lamps (clear of the x 126 fragment)
         Gate(root, 6, 155f, 6f, "lantern");
         Prop(root, "lion", 134f, 5f, -11f); Prop(root, "lantern", 146f, 5f, -11f);         // wide-stretch side path
+        Prop(root, "lion", 158.5f, 6f, -3.3f); Prop(root, "banner", 158.5f, 6f, 3.6f);     // foot of the tower ramp (ODD S47)
         Finish(scene, new Vector3(2f, 2f, 0f), "Nivel4_China", true);
     }
 
@@ -1065,9 +1073,10 @@ public static class LevelSceneBuilder
         if (guard != null) Guard(p, guard, x, floorTop + 1.5f);
     }
 
-    // 2.5D levels: a decorative ground strip behind every main floor (z 1-5, same top, no collider: the player is held at
-    // z = 0 by the side bounds) dressed with culture props. The boss arena gets neither (ODD S35: its floor keeps the path depth).
-    const float ApronZ0 = 1f, ApronDepth = 4f;
+    // 2.5D levels: a decorative ground strip behind every main floor (z 1-5, no collider: the player is held at z = 0 by the
+    // side bounds) dressed with culture props. It lies a step below the path (ODD S46): from the side camera the props then
+    // rise from behind the walkway instead of reading as standing on it. The boss arena gets neither (ODD S35).
+    const float ApronZ0 = 1f, ApronDepth = 4f, ApronDrop = 1.2f;
     static readonly string[][] DecoKinds =
     {
         new[] { "hut", "jars", "bricks", "brazier", "lamassu", "palm", "palm", "jars", "hut" },
@@ -1099,7 +1108,7 @@ public static class LevelSceneBuilder
                 float cx = x + size.x / 2f;
                 if (cx > ArenaStartX && cx < ArenaEndX) { x = cx + size.x / 2f + 2f; continue; }
                 float zc = ApronZ0 + 0.5f + size.z / 2f + (float)rnd.NextDouble() * Mathf.Max(0f, ApronDepth - 1f - size.z);
-                Deco(root, culture, prefix, kind, new Vector3(cx, b.max.y, zc), size, Mathf.Lerp(-6f, 6f, (float)rnd.NextDouble()));
+                Deco(root, culture, prefix, kind, new Vector3(cx, b.max.y - ApronDrop, zc), size, Mathf.Lerp(-6f, 6f, (float)rnd.NextDouble()));
                 x = cx + size.x / 2f + Mathf.Lerp(0.6f, 3f, (float)rnd.NextDouble());
             }
         }
@@ -1120,7 +1129,7 @@ public static class LevelSceneBuilder
             var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab, root);
             go.name = "Deco_Explanada_" + label;
             go.transform.localScale = new Vector3(w / 4f, 1f, ApronDepth / 4f);
-            go.transform.position = new Vector3(cx, floor.max.y - 1f, ApronZ0 + ApronDepth / 2f);
+            go.transform.position = new Vector3(cx, floor.max.y - ApronDrop - 1f, ApronZ0 + ApronDepth / 2f);
             Skin(go, 0, KitMaterial(folder, mesh, Color.gray));
         }
     }
@@ -1236,7 +1245,8 @@ public static class LevelSceneBuilder
     }
 
     // Solid masonry under a ramp, from the ground (y 0) up to just under the slab, in `steps` blocks whose tops follow the
-    // slope at their low edge, so no void shows beneath the walkway (ODD S40). Named Muro_* so they wear the wall kit.
+    // slope at their low edge, so no void shows beneath the walkway (ODD S40). Named Bloque_* so they wear the plain block kit:
+    // the wall kit's merlons rose through the slab as rows of red slats the player passed through (ODD S47).
     static void RampBody(Transform p, string name, float x, float y, float w, float h, int steps)
     {
         float x0 = x - w / 2f, sw = w / steps;

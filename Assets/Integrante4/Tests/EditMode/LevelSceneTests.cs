@@ -359,13 +359,26 @@ namespace Unit404.Integrante4.Tests
             foreach (int z in zones)
                 Assert.GreaterOrEqual(props.Count(m => m.GetComponent<Renderer>().bounds.center.x >= z * 40f && m.GetComponent<Renderer>().bounds.center.x < z * 40f + 40f), is3D ? 2 : 3, "props in zone " + (z + 1));
 
+            // 2.5D: "Deco_" props dress the ground behind the path; every other prop stands on a walkable surface and is solid.
+            var deco = props.Where(m => m.GetComponentsInParent<Transform>().Any(t => t.name.StartsWith("Deco_"))).ToArray();
+            var solidProps = props.Except(deco).ToArray();
             if (!is3D)
             {
                 var ground = Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None).Where(r => r.name.StartsWith("Deco_Explanada")).Select(r => r.bounds).ToArray();
+                // ODD S46 / T46: the decorative ground lies a step below the path, so from the side camera its props rise from
+                // behind the walkway instead of reading as standing on it; what does stand on the path blocks the player.
+                var floors = Solids().Where(b => b.transform.rotation == Quaternion.identity && Mathf.Abs(b.bounds.size.z - 2f) < 0.01f && b.bounds.size.y <= 2.01f && b.bounds.size.x >= 10f).ToArray();
+                foreach (var g in ground)
+                {
+                    var under = floors.Where(f => f.bounds.min.x <= g.center.x && f.bounds.max.x >= g.center.x).ToArray();
+                    Assert.IsNotEmpty(under, "path floor in front of the decorative ground at x " + g.center.x.ToString("0.0"));
+                    Assert.LessOrEqual(g.max.y, under.Max(f => f.bounds.max.y) - 1f, "decorative ground a step below the path at x " + g.center.x.ToString("0.0"));
+                }
+                Assert.GreaterOrEqual(solidProps.Length, 2, "solid culture props on the path");
                 Assert.Greater(ground.Length, 0, "decorative ground behind the path");
                 // ODD S35 / T37: the arena floor keeps the path depth, no decorative apron behind it.
                 Assert.IsFalse(ground.Any(g => g.center.x > 120f && g.center.x < 160f), "no decorative ground in the boss arena");
-                foreach (var m in props)
+                foreach (var m in deco)
                 {
                     Bounds b = m.GetComponent<Renderer>().bounds;
                     Assert.AreEqual(0, m.GetComponentsInParent<Collider>().Length + m.GetComponentsInChildren<Collider>().Length, m.name + " no collider in 2.5D");
@@ -373,7 +386,6 @@ namespace Unit404.Integrante4.Tests
                     Assert.IsTrue(ground.Any(g => g.min.x <= b.center.x && g.max.x >= b.center.x && g.min.z <= b.center.z && g.max.z >= b.center.z && Mathf.Abs(g.max.y - b.min.y) < 0.05f),
                         m.name + " stands on the decorative ground: " + b);
                 }
-                return;
             }
 
             var solids = Solids();
@@ -385,7 +397,7 @@ namespace Unit404.Integrante4.Tests
                 s.Expand(0.2f);
                 return s;
             }).ToArray();
-            foreach (var m in props)
+            foreach (var m in solidProps)
             {
                 string hostName = m.gameObject.name.Substring("Kit_".Length);
                 var host = m.transform.parent.Find(hostName);
@@ -506,6 +518,34 @@ namespace Unit404.Integrante4.Tests
                 foreach (var end in new[] { low, high })
                     foreach (var b in others.Where(b => b.bounds.min.x < end.x + 0.3f && b.bounds.max.x > end.x - 0.3f && b.bounds.min.y < end.y + 1f))
                         Assert.LessOrEqual(b.bounds.max.y, end.y + 0.05f, ramp.name + " blocked by " + b.name + " at x " + end.x.ToString("0.0"));
+            }
+        }
+
+        // ODD S47 / T46: what renders under a ramp (its masonry body) stays under the slab, so nothing pokes through the
+        // walkway where the player would pass through it.
+        [TestCase("Nivel1_Mesopotamia")]
+        [TestCase("Nivel2_Egipto")]
+        [TestCase("Nivel3_Grecia")]
+        [TestCase("Nivel4_China")]
+        public void Ramps_NothingUnderTheSlabPokesThroughTheWalkway(string sceneName)
+        {
+            Open(sceneName);
+            var ramps = Solids().Where(b => Mathf.Abs(Mathf.DeltaAngle(b.transform.eulerAngles.z, 0f)) > 0.5f).ToArray();
+            var renderers = Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None).Where(r => r.enabled && r.gameObject.activeInHierarchy).ToArray();
+            foreach (var ramp in ramps)
+            {
+                Vector3 s = ramp.transform.lossyScale;
+                Vector3 low = ramp.transform.position + ramp.transform.rotation * new Vector3(-s.x / 2f, s.y / 2f, 0f);
+                Vector3 high = ramp.transform.position + ramp.transform.rotation * new Vector3(s.x / 2f, s.y / 2f, 0f);
+                System.Func<float, float> top = x => Mathf.Lerp(low.y, high.y, Mathf.InverseLerp(low.x, high.x, x));
+                foreach (var r in renderers)
+                {
+                    if (r.gameObject == ramp.gameObject || r.name.StartsWith("Kit_" + ramp.name)) continue;
+                    Bounds b = r.bounds;
+                    if (b.max.x <= low.x + 0.05f || b.min.x >= high.x - 0.05f || b.min.z >= ramp.bounds.max.z || b.max.z <= ramp.bounds.min.z) continue;
+                    if (b.min.y >= top(b.center.x) - 0.05f) continue; // above the walkway: pickups, glyphs
+                    Assert.LessOrEqual(b.max.y, top(Mathf.Max(b.min.x, low.x)) + 0.05f, r.name + " pokes through " + ramp.name + ": " + b);
+                }
             }
         }
 
